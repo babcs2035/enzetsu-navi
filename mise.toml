@@ -1,0 +1,33 @@
+[tools]
+node = "25.4.0"
+pnpm = "10.28.1"
+
+[tasks]
+# --- Setup ---
+setup = { description = "依存関係のインストール、DB起動、スキーマ適用", depends = ["db:up"], run = "pnpm install && pnpm prisma db push && pnpm prisma generate" }
+
+# --- Development ---
+dev = { description = "開発サーバー起動 (DB起動 + Next.js)", depends = ["db:up"], run = "pnpm dev" }
+lint = { description = "Lint & Format (Biome)", run = "pnpm lint" }
+check = { description = "コード品質チェック (Lint, Format, TypeCheck)", run = "pnpm check" }
+
+# --- Build ---
+build = { description = "プロダクションビルド", depends = ["db:up"], run = "pnpm build" }
+
+# --- Database (Prisma) ---
+"db:up" = { description = "DBコンテナ起動 (待機あり)", run = "docker compose up -d db --wait" }
+"db:down" = { description = "DBコンテナ停止", run = "docker compose stop db" }
+"db:reset" = { description = "DBリセット (全データ削除)", run = "docker compose down -v && docker compose up -d db" }
+"db:studio" = { description = "Prisma Studio (管理GUI) 起動", run = "pnpm prisma studio" }
+"db:push" = { description = "DBスキーマ適用", run = "pnpm prisma db push" }
+"db:generate" = { description = "Prisma Client 生成", run = "pnpm prisma generate" }
+
+
+
+# --- Docker ---
+docker = { description = "フルスタック起動 (App + DB)", run = "docker compose up -d" }
+"docker:logs" = { description = "コンテナログ表示", run = "docker compose logs -f" }
+"docker:build" = { description = "Dockerイメージビルド", run = "docker compose build" }
+
+# --- Utility ---
+clean = { description = "一時ファイル削除", run = "rm -rf node_modules .next" }

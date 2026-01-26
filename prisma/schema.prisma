@@ -1,0 +1,61 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Party {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  color     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  candidates Candidate[]
+
+  @@map("parties")
+}
+
+model Candidate {
+  id        Int      @id @default(autoincrement())
+  partyId   Int      @map("party_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  party   Party    @relation(fields: [partyId], references: [id])
+  speeches Speech[]
+
+  @@map("candidates")
+}
+
+model Speech {
+  id             Int      @id @default(autoincrement())
+  candidateId    Int      @map("candidate_id")
+  startAt        DateTime @map("start_at")
+  locationName   String   @map("location_name")
+  address        String?
+  lat            Float?
+  lng            Float?
+  sourceUrl      String?  @map("source_url")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+
+  @@map("speeches")
+}
+
+model GeocodeCache {
+  id           Int      @id @default(autoincrement())
+  locationName String   @unique @map("location_name")
+  address      String?
+  lat          Float?
+  lng          Float?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("geocode_cache")
+}
