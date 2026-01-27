@@ -1,33 +1,31 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/IMAGE_NAME_PLACEHOLDER:latest
     container_name: enzetsu-app
     restart: unless-stopped
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
+    env_file: .env
     environment:
-      DATABASE_URL: postgresql://enzetsu:enzetsu_password@db:5432/enzetsu_navi
-      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY}
+      NODE_ENV: production
     depends_on:
-      db:
+      db: 
         condition: service_healthy
-
 
   db:
     image: postgres:16-alpine
     container_name: enzetsu-db
     restart: unless-stopped
+    env_file: .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-enzetsu}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-enzetsu_password}
       POSTGRES_DB: ${POSTGRES_DB:-enzetsu_navi}
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-enzetsu}"]
       interval: 10s

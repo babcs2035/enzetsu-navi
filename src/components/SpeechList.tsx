@@ -1,26 +1,35 @@
-'use client'
+"use client";
 
-import { Box, Flex, Heading, Link, Spinner, Text, VStack } from '@chakra-ui/react'
-import { format } from 'date-fns'
-import { ja } from 'date-fns/locale'
-import { AlertCircle, Clock, ExternalLink, MapPin } from 'lucide-react'
-import { useEffect, useRef } from 'react'
-import { useStore } from '@/store/useStore'
+import {
+  Box,
+  Flex,
+  Heading,
+  Link,
+  Spinner,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
+import { AlertCircle, Clock, ExternalLink, MapPin } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useStore } from "@/store/useStore";
 
 export function SpeechList() {
-  const { speeches, activeSpeechId, setActiveSpeechId, isLoading, error } = useStore()
-  const listRef = useRef<HTMLDivElement>(null)
-  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const { speeches, activeSpeechId, setActiveSpeechId, isLoading, error } =
+    useStore();
+  const listRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // アクティブな演説にスクロール
   useEffect(() => {
     if (activeSpeechId) {
-      const cardEl = cardRefs.current.get(activeSpeechId)
+      const cardEl = cardRefs.current.get(activeSpeechId);
       if (cardEl) {
-        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
-  }, [activeSpeechId])
+  }, [activeSpeechId]);
 
   // ローディング表示
   if (isLoading && speeches.length === 0) {
@@ -33,7 +42,7 @@ export function SpeechList() {
           </Text>
         </VStack>
       </Flex>
-    )
+    );
   }
 
   // エラー表示
@@ -48,7 +57,7 @@ export function SpeechList() {
           </Text>
         </VStack>
       </Flex>
-    )
+    );
   }
 
   // データなし
@@ -63,7 +72,7 @@ export function SpeechList() {
           </Text>
         </VStack>
       </Flex>
-    )
+    );
   }
 
   return (
@@ -78,30 +87,35 @@ export function SpeechList() {
 
       {/* 演説カードリスト */}
       <VStack gap={3} align="stretch">
-        {speeches.map((speech) => {
-          const isActive = speech.id === activeSpeechId
-          const startTime = new Date(speech.start_at)
+        {speeches.map(speech => {
+          const isActive = speech.id === activeSpeechId;
+          const startTime = new Date(speech.start_at);
 
           return (
             <Box
               key={speech.id}
               ref={(el: HTMLDivElement | null) => {
-                if (el) cardRefs.current.set(speech.id, el)
+                if (el) cardRefs.current.set(speech.id, el);
               }}
               onClick={() => setActiveSpeechId(speech.id)}
               p={4}
               borderRadius="xl"
               cursor="pointer"
-              bg={isActive ? 'whiteAlpha.150' : 'whiteAlpha.50'}
-              borderWidth={isActive ? '2px' : '1px'}
-              borderColor={isActive ? 'purple.500' : 'transparent'}
-              boxShadow={isActive ? 'lg' : 'none'}
-              _hover={{ bg: 'whiteAlpha.100' }}
+              bg={isActive ? "whiteAlpha.150" : "whiteAlpha.50"}
+              borderWidth={isActive ? "2px" : "1px"}
+              borderColor={isActive ? "purple.500" : "transparent"}
+              boxShadow={isActive ? "lg" : "none"}
+              _hover={{ bg: "whiteAlpha.100" }}
               transition="all 0.3s"
             >
               {/* 政党バッジ */}
               <Flex align="center" gap={2} mb={2}>
-                <Box w={2.5} h={2.5} borderRadius="full" bg={speech.party_color} />
+                <Box
+                  w={2.5}
+                  h={2.5}
+                  borderRadius="full"
+                  bg={speech.party_color}
+                />
                 <Text fontSize="xs" color="whiteAlpha.500">
                   {speech.party_name}
                 </Text>
@@ -142,7 +156,9 @@ export function SpeechList() {
               {/* 時刻 */}
               <Flex align="center" gap={2} fontSize="xs" color="whiteAlpha.400">
                 <Clock size={14} />
-                <Text>{format(startTime, 'M月d日（E） HH:mm', { locale: ja })}</Text>
+                <Text>
+                  {format(startTime, "M月d日（E） HH:mm", { locale: ja })}
+                </Text>
               </Flex>
 
               {/* ソースリンク */}
@@ -151,23 +167,23 @@ export function SpeechList() {
                   href={speech.source_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={e => e.stopPropagation()}
                   display="inline-flex"
                   alignItems="center"
                   gap={1}
                   mt={2}
                   fontSize="xs"
                   color="purple.400"
-                  _hover={{ color: 'purple.300' }}
+                  _hover={{ color: "purple.300" }}
                 >
                   <ExternalLink size={12} />
                   出典を見る
                 </Link>
               )}
             </Box>
-          )
+          );
         })}
       </VStack>
     </Box>
-  )
+  );
 }

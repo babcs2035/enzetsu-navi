@@ -1,40 +1,43 @@
-'use client'
+"use client";
 
-import { Box, Flex, Spinner, Text, VStack } from '@chakra-ui/react'
-import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
-import { FilterPanel } from '@/components/FilterPanel'
-import { Header } from '@/components/Header'
-import { Sidebar } from '@/components/Sidebar'
-import { SpeechList } from '@/components/SpeechList'
-import { Stats } from '@/components/Stats'
-import { TimeSlider } from '@/components/TimeSlider'
-import { useStore } from '@/store/useStore'
+import { Box, Flex, Spinner, Text, VStack } from "@chakra-ui/react";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import { FilterPanel } from "@/components/FilterPanel";
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
+import { SpeechList } from "@/components/SpeechList";
+import { Stats } from "@/components/Stats";
+import { TimeSlider } from "@/components/TimeSlider";
+import { useStore } from "@/store/useStore";
 
 // MapLibreはSSRと互換性がないため、動的インポート
-const MapView = dynamic(() => import('@/components/MapView').then((mod) => mod.MapView), {
-  ssr: false,
-  loading: () => (
-    <Flex w="full" h="full" align="center" justify="center" bg="gray.900">
-      <VStack gap={4}>
-        <Spinner size="xl" color="purple.500" borderWidth="4px" />
-        <Text color="whiteAlpha.600">地図を読み込み中...</Text>
-      </VStack>
-    </Flex>
-  ),
-})
+const MapView = dynamic(
+  () => import("@/components/MapView").then(mod => mod.MapView),
+  {
+    ssr: false,
+    loading: () => (
+      <Flex w="full" h="full" align="center" justify="center" bg="gray.900">
+        <VStack gap={4}>
+          <Spinner size="xl" color="purple.500" borderWidth="4px" />
+          <Text color="whiteAlpha.600">地図を読み込み中...</Text>
+        </VStack>
+      </Flex>
+    ),
+  },
+);
 
 export default function HomePage() {
-  const { fetchParties, fetchSpeeches, fetchStats } = useStore()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const { fetchParties, fetchSpeeches, fetchStats } = useStore();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
     // 初期データ取得
-    fetchParties()
-    fetchSpeeches()
-    fetchStats()
-  }, [fetchParties, fetchSpeeches, fetchStats])
+    fetchParties();
+    fetchSpeeches();
+    fetchStats();
+  }, [fetchParties, fetchSpeeches, fetchStats]);
 
   return (
     <Flex direction="column" h="100vh" overflow="hidden" bg="gray.900">
@@ -82,5 +85,5 @@ export default function HomePage() {
         </Sidebar>
       </Flex>
     </Flex>
-  )
+  );
 }

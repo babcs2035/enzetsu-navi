@@ -1,12 +1,12 @@
-'use client'
+"use client";
 
-import { Box, Flex, Heading, IconButton, Text } from '@chakra-ui/react'
-import { Filter, MapPin, Menu } from 'lucide-react'
+import { Box, Flex, Heading, IconButton, Text } from "@chakra-ui/react";
+import { Filter, MapPin, Menu } from "lucide-react";
 
 interface HeaderProps {
-  onToggleSidebar: () => void
-  onToggleFilter: () => void
-  isSidebarOpen: boolean
+  onToggleSidebar: () => void;
+  onToggleFilter: () => void;
+  isSidebarOpen: boolean;
 }
 
 export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
@@ -55,8 +55,8 @@ export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
           onClick={onToggleFilter}
           variant="ghost"
           color="whiteAlpha.800"
-          _hover={{ bg: 'whiteAlpha.100' }}
-          display={{ base: 'flex', lg: 'none' }}
+          _hover={{ bg: "whiteAlpha.100" }}
+          display={{ base: "flex", lg: "none" }}
         >
           <Filter size={20} />
         </IconButton>
@@ -66,11 +66,11 @@ export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
           onClick={onToggleSidebar}
           variant="ghost"
           color="whiteAlpha.800"
-          _hover={{ bg: 'whiteAlpha.100' }}
+          _hover={{ bg: "whiteAlpha.100" }}
         >
           <Menu size={20} />
         </IconButton>
       </Flex>
     </Flex>
-  )
+  );
 }

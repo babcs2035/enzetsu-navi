@@ -1,16 +1,16 @@
-'use server'
+"use server";
 
-import { addHours, subHours } from 'date-fns'
-import { prisma } from '@/lib/prisma'
+import { addHours, subHours } from "date-fns";
+import { prisma } from "@/lib/prisma";
 
 interface SpeechParams {
-  start_time?: string
-  end_time?: string
-  party_ids?: number[]
-  candidate_ids?: number[]
-  has_location?: boolean
-  limit?: number
-  offset?: number
+  start_time?: string;
+  end_time?: string;
+  party_ids?: number[];
+  candidate_ids?: number[];
+  has_location?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 // レスポンス整形用ヘルパー
@@ -30,37 +30,37 @@ function formatSpeech(s: any) {
     lng: s.lng,
     source_url: s.sourceUrl,
     created_at: s.createdAt,
-  }
+  };
 }
 
 export async function getSpeeches(params: SpeechParams = {}) {
   // biome-ignore lint/suspicious/noExplicitAny: 動的クエリ
-  const where: any = {}
+  const where: any = {};
 
   if (params.party_ids?.length) {
-    where.candidate = { partyId: { in: params.party_ids } }
+    where.candidate = { partyId: { in: params.party_ids } };
   }
 
   if (params.candidate_ids?.length) {
-    where.candidateId = { in: params.candidate_ids }
+    where.candidateId = { in: params.candidate_ids };
   }
 
   if (params.start_time) {
-    where.startAt = { ...where.startAt, gte: new Date(params.start_time) }
+    where.startAt = { ...where.startAt, gte: new Date(params.start_time) };
   }
 
   if (params.end_time) {
-    where.startAt = { ...where.startAt, lte: new Date(params.end_time) }
+    where.startAt = { ...where.startAt, lte: new Date(params.end_time) };
   }
 
   if (params.has_location) {
-    where.lat = { not: null }
-    where.lng = { not: null }
+    where.lat = { not: null };
+    where.lng = { not: null };
   }
 
   const speeches = await prisma.speech.findMany({
     where,
-    orderBy: { startAt: 'asc' },
+    orderBy: { startAt: "asc" },
     take: params.limit || 100,
     skip: params.offset || 0,
     include: {
@@ -68,22 +68,22 @@ export async function getSpeeches(params: SpeechParams = {}) {
         include: { party: true },
       },
     },
-  })
+  });
 
   // Date型のシリアライズのために一回JSON通す
-  return JSON.parse(JSON.stringify(speeches.map(formatSpeech)))
+  return JSON.parse(JSON.stringify(speeches.map(formatSpeech)));
 }
 
 export async function getSpeechesByTimeRange(params: {
-  target_time: string
-  range_hours?: number
-  party_ids?: number[]
-  candidate_ids?: number[]
+  target_time: string;
+  range_hours?: number;
+  party_ids?: number[];
+  candidate_ids?: number[];
 }) {
-  const targetTime = new Date(params.target_time)
-  const range = params.range_hours || 1
-  const startTime = subHours(targetTime, range)
-  const endTime = addHours(targetTime, range)
+  const targetTime = new Date(params.target_time);
+  const range = params.range_hours || 1;
+  const startTime = subHours(targetTime, range);
+  const endTime = addHours(targetTime, range);
 
   // biome-ignore lint/suspicious/noExplicitAny: 動的クエリ
   const where: any = {
@@ -93,30 +93,30 @@ export async function getSpeechesByTimeRange(params: {
     },
     lat: { not: null },
     lng: { not: null },
-  }
+  };
 
   if (params.party_ids?.length) {
     where.candidate = {
       ...where.candidate,
       partyId: { in: params.party_ids },
-    }
+    };
   }
 
   if (params.candidate_ids?.length) {
-    where.candidateId = { in: params.candidate_ids }
+    where.candidateId = { in: params.candidate_ids };
   }
 
   const speeches = await prisma.speech.findMany({
     where,
-    orderBy: { startAt: 'asc' },
+    orderBy: { startAt: "asc" },
     include: {
       candidate: {
         include: { party: true },
       },
     },
-  })
+  });
 
-  return JSON.parse(JSON.stringify(speeches.map(formatSpeech)))
+  return JSON.parse(JSON.stringify(speeches.map(formatSpeech)));
 }
 
 export async function getUnknownLocations(limit = 100) {
@@ -124,16 +124,16 @@ export async function getUnknownLocations(limit = 100) {
     where: {
       OR: [{ lat: null }, { lng: null }],
     },
-    orderBy: { startAt: 'desc' },
+    orderBy: { startAt: "desc" },
     take: limit,
     include: {
       candidate: {
         include: { party: true },
       },
     },
-  })
+  });
 
-  return JSON.parse(JSON.stringify(speeches.map(formatSpeech)))
+  return JSON.parse(JSON.stringify(speeches.map(formatSpeech)));
 }
 
 export async function getSpeech(id: number) {
@@ -144,25 +144,30 @@ export async function getSpeech(id: number) {
         include: { party: true },
       },
     },
-  })
-  return speech ? JSON.parse(JSON.stringify(formatSpeech(speech))) : null
+  });
+  return speech ? JSON.parse(JSON.stringify(formatSpeech(speech))) : null;
 }
 
 export async function getStats() {
-  const [totalSpeeches, totalCandidates, totalParties, speechesWithoutLocation, lastSpeech] =
-    await Promise.all([
-      prisma.speech.count(),
-      prisma.candidate.count(),
-      prisma.party.count(),
-      prisma.speech.count({
-        where: {
-          OR: [{ lat: null }, { lng: null }],
-        },
-      }),
-      prisma.speech.findFirst({
-        orderBy: { updatedAt: 'desc' },
-      }),
-    ])
+  const [
+    totalSpeeches,
+    totalCandidates,
+    totalParties,
+    speechesWithoutLocation,
+    lastSpeech,
+  ] = await Promise.all([
+    prisma.speech.count(),
+    prisma.candidate.count(),
+    prisma.party.count(),
+    prisma.speech.count({
+      where: {
+        OR: [{ lat: null }, { lng: null }],
+      },
+    }),
+    prisma.speech.findFirst({
+      orderBy: { updatedAt: "desc" },
+    }),
+  ]);
 
   return JSON.parse(
     JSON.stringify({
@@ -172,5 +177,5 @@ export async function getStats() {
       speeches_without_location: speechesWithoutLocation,
       last_updated: lastSpeech?.updatedAt || new Date(),
     }),
-  )
+  );
 }

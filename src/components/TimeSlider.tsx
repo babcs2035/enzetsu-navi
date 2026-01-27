@@ -1,74 +1,76 @@
-'use client'
+"use client";
 
-import { Box, Button, Flex, IconButton, Spinner, Text } from '@chakra-ui/react'
-import { addHours, endOfDay, format, startOfDay, subHours } from 'date-fns'
-import { ja } from 'date-fns/locale'
-import { Clock, Pause, Play, SkipBack, SkipForward } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { useStore } from '@/store/useStore'
+import { Box, Button, Flex, IconButton, Spinner, Text } from "@chakra-ui/react";
+import { addHours, endOfDay, format, startOfDay, subHours } from "date-fns";
+import { ja } from "date-fns/locale";
+import { Clock, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useStore } from "@/store/useStore";
 
 export function TimeSlider() {
-  const { selectedTime, setSelectedTime, isLoading } = useStore()
-  const [isPlaying, setIsPlaying] = useState(false)
+  const { selectedTime, setSelectedTime, isLoading } = useStore();
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // 今日の開始と終了
-  const today = new Date()
-  const dayStart = startOfDay(today)
-  const dayEnd = endOfDay(today)
+  const today = new Date();
+  const dayStart = startOfDay(today);
+  const dayEnd = endOfDay(today);
 
   // スライダーの値を計算（分単位）
   const getSliderValue = useCallback(
     (date: Date) => {
-      const start = dayStart.getTime()
-      const current = date.getTime()
-      return Math.floor((current - start) / (1000 * 60)) // 分単位
+      const start = dayStart.getTime();
+      const current = date.getTime();
+      return Math.floor((current - start) / (1000 * 60)); // 分単位
     },
     [dayStart],
-  )
+  );
 
-  const sliderValue = getSliderValue(selectedTime)
-  const maxValue = 24 * 60 // 1日 = 1440分
+  const sliderValue = getSliderValue(selectedTime);
+  const maxValue = 24 * 60; // 1日 = 1440分
 
   // スライダーの変更ハンドラ
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const minutes = parseInt(e.target.value, 10)
-    const newTime = new Date(dayStart.getTime() + minutes * 60 * 1000)
-    setSelectedTime(newTime)
-  }
+    const minutes = parseInt(e.target.value, 10);
+    const newTime = new Date(dayStart.getTime() + minutes * 60 * 1000);
+    setSelectedTime(newTime);
+  };
 
   // 時刻移動
   const moveTime = (hours: number) => {
     const newTime =
-      hours > 0 ? addHours(selectedTime, hours) : subHours(selectedTime, Math.abs(hours))
+      hours > 0
+        ? addHours(selectedTime, hours)
+        : subHours(selectedTime, Math.abs(hours));
 
     // 範囲内に制限
     if (newTime >= dayStart && newTime <= dayEnd) {
-      setSelectedTime(newTime)
+      setSelectedTime(newTime);
     }
-  }
+  };
 
   // 現在時刻に移動
   const goToNow = () => {
-    setSelectedTime(new Date())
-  }
+    setSelectedTime(new Date());
+  };
 
   // 自動再生
   useEffect(() => {
-    if (!isPlaying) return
+    if (!isPlaying) return;
 
     const interval = setInterval(() => {
-      const current = useStore.getState().selectedTime
-      const next = addHours(current, 1)
+      const current = useStore.getState().selectedTime;
+      const next = addHours(current, 1);
       if (next > dayEnd) {
-        setIsPlaying(false)
-        setSelectedTime(dayStart)
+        setIsPlaying(false);
+        setSelectedTime(dayStart);
       } else {
-        setSelectedTime(next)
+        setSelectedTime(next);
       }
-    }, 2000) // 2秒ごとに1時間進む
+    }, 2000); // 2秒ごとに1時間進む
 
-    return () => clearInterval(interval)
-  }, [isPlaying, dayEnd, dayStart, setSelectedTime])
+    return () => clearInterval(interval);
+  }, [isPlaying, dayEnd, dayStart, setSelectedTime]);
 
   return (
     <Box
@@ -91,10 +93,10 @@ export function TimeSlider() {
         </Flex>
         <Box textAlign="right">
           <Text fontSize="xl" fontWeight="bold" color="white">
-            {format(selectedTime, 'HH:mm', { locale: ja })}
+            {format(selectedTime, "HH:mm", { locale: ja })}
           </Text>
           <Text fontSize="xs" color="whiteAlpha.500">
-            {format(selectedTime, 'M月d日（E）', { locale: ja })}
+            {format(selectedTime, "M月d日（E）", { locale: ja })}
           </Text>
         </Box>
       </Flex>
@@ -107,10 +109,15 @@ export function TimeSlider() {
           max={maxValue}
           value={sliderValue}
           onChange={handleSliderChange}
-          style={{ width: '100%' }}
+          style={{ width: "100%" }}
           disabled={isLoading}
         />
-        <Flex justify="space-between" fontSize="xs" color="whiteAlpha.400" mt={1}>
+        <Flex
+          justify="space-between"
+          fontSize="xs"
+          color="whiteAlpha.400"
+          mt={1}
+        >
           <Text>00:00</Text>
           <Text>06:00</Text>
           <Text>12:00</Text>
@@ -126,24 +133,28 @@ export function TimeSlider() {
           onClick={() => moveTime(-1)}
           variant="ghost"
           color="whiteAlpha.800"
-          _hover={{ bg: 'whiteAlpha.100' }}
+          _hover={{ bg: "whiteAlpha.100" }}
           disabled={isLoading}
         >
           <SkipBack size={16} />
         </IconButton>
 
         <IconButton
-          aria-label={isPlaying ? '停止' : '再生'}
+          aria-label={isPlaying ? "停止" : "再生"}
           onClick={() => setIsPlaying(!isPlaying)}
           borderRadius="full"
-          bg={isPlaying ? 'purple.500' : 'whiteAlpha.100'}
+          bg={isPlaying ? "purple.500" : "whiteAlpha.100"}
           color="white"
-          _hover={{ bg: isPlaying ? 'purple.600' : 'whiteAlpha.200' }}
-          boxShadow={isPlaying ? '0 4px 14px rgba(139, 92, 246, 0.4)' : 'none'}
+          _hover={{ bg: isPlaying ? "purple.600" : "whiteAlpha.200" }}
+          boxShadow={isPlaying ? "0 4px 14px rgba(139, 92, 246, 0.4)" : "none"}
           disabled={isLoading}
           size="lg"
         >
-          {isPlaying ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: 2 }} />}
+          {isPlaying ? (
+            <Pause size={20} />
+          ) : (
+            <Play size={20} style={{ marginLeft: 2 }} />
+          )}
         </IconButton>
 
         <IconButton
@@ -151,7 +162,7 @@ export function TimeSlider() {
           onClick={() => moveTime(1)}
           variant="ghost"
           color="whiteAlpha.800"
-          _hover={{ bg: 'whiteAlpha.100' }}
+          _hover={{ bg: "whiteAlpha.100" }}
           disabled={isLoading}
         >
           <SkipForward size={16} />
@@ -164,7 +175,7 @@ export function TimeSlider() {
           variant="ghost"
           size="sm"
           color="whiteAlpha.800"
-          _hover={{ bg: 'whiteAlpha.100' }}
+          _hover={{ bg: "whiteAlpha.100" }}
           disabled={isLoading}
         >
           現在時刻
@@ -186,5 +197,5 @@ export function TimeSlider() {
         </Flex>
       )}
     </Box>
-  )
+  );
 }

@@ -1,0 +1,92 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+
+      - name: Set lower case owner name
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@master
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@master
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@master
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install cloudflared
+        run: |
+          lastest_version=$(curl -s $GITHUB_API_URL/repos/cloudflare/cloudflared/releases/latest | jq -r '.tag_name')
+          mkdir -p /tmp/cloudflared
+          curl -sL -o /tmp/cloudflared/cloudflared $GITHUB_SERVER_URL/cloudflare/cloudflared/releases/download/$lastest_version/cloudflared-linux-amd64
+          chmod +x /tmp/cloudflared/cloudflared
+          /tmp/cloudflared/cloudflared --version
+
+      - name: Deploy to VPS
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          TARGET: ${{ secrets.DEPLOY_TARGET }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.SSH_CLOUDFLARED_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.SSH_CLOUDFLARED_SECRET }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          export CF_ACCESS_CLIENT_ID=$(echo "$CF_ACCESS_CLIENT_ID" | tr -d '\n\r ')
+          export CF_ACCESS_CLIENT_SECRET=$(echo "$CF_ACCESS_CLIENT_SECRET" | tr -d '\n\r ')
+
+          PROXY="/tmp/cloudflared/cloudflared access ssh --hostname %h"
+
+          ssh -o StrictHostKeyChecking=no -o ProxyCommand="$PROXY" $USER@$HOST "mkdir -p $TARGET/database"
+          scp -o StrictHostKeyChecking=no -o ProxyCommand="$PROXY" docker-compose.production.yml $USER@$HOST:$TARGET/
+          scp -o StrictHostKeyChecking=no -o ProxyCommand="$PROXY" database/init.sql $USER@$HOST:$TARGET/database/
+
+          ssh -o StrictHostKeyChecking=no -o ProxyCommand="$PROXY" $USER@$HOST "
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            cd $TARGET
+            sed 's|IMAGE_NAME_PLACEHOLDER|${{ env.IMAGE_NAME }}|g' docker-compose.production.yml > docker-compose.yml
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
+          "
