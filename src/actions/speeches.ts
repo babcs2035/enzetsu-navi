@@ -13,8 +13,8 @@ interface SpeechParams {
   offset?: number;
 }
 
-// レスポンス整形用ヘルパー
-// biome-ignore lint/suspicious/noExplicitAny: Prismaの型推論が複雑なため
+// レスポンス整形用ヘルパー．
+// biome-ignore lint/suspicious/noExplicitAny: Prisma の型推論が複雑なため any を許容する．
 function formatSpeech(s: any) {
   return {
     id: s.id,
@@ -23,7 +23,7 @@ function formatSpeech(s: any) {
     party_id: s.candidate.partyId,
     party_name: s.candidate.party.name,
     party_color: s.candidate.party.color,
-    start_at: s.startAt, // JSON.stringifyでISO文字列になる
+    start_at: s.startAt, // JSON.stringify で ISO 文字列になる．
     location_name: s.locationName,
     address: s.address,
     lat: s.lat,
@@ -35,7 +35,7 @@ function formatSpeech(s: any) {
 }
 
 export async function getSpeeches(params: SpeechParams = {}) {
-  // biome-ignore lint/suspicious/noExplicitAny: 動的クエリ
+  // biome-ignore lint/suspicious/noExplicitAny: 動的クエリのため any を許容する．
   const where: any = {};
 
   if (params.party_ids?.length) {
@@ -71,7 +71,7 @@ export async function getSpeeches(params: SpeechParams = {}) {
     },
   });
 
-  // Date型のシリアライズのために一回JSON通す
+  // Date 型のシリアライズのために JSON を経由させる．
   return JSON.parse(JSON.stringify(speeches.map(formatSpeech)));
 }
 
@@ -86,7 +86,7 @@ export async function getSpeechesByTimeRange(params: {
   const startTime = subHours(targetTime, range);
   const endTime = addHours(targetTime, range);
 
-  // biome-ignore lint/suspicious/noExplicitAny: 動的クエリ
+  // biome-ignore lint/suspicious/noExplicitAny: 動的クエリのため any を許容する．
   const where: any = {
     startAt: {
       gte: startTime,

@@ -7,7 +7,7 @@ import { Box } from "@chakra-ui/react";
 import { useStore } from "@/store/useStore";
 import type { Speech } from "@/types";
 
-// OpenStreetMap タイルスタイル（APIキー不要）
+// OpenStreetMap タイルスタイル（API キー不要）．
 const OSM_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -30,6 +30,10 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
   ],
 };
 
+/**
+ * 地図コンポーネント．
+ * MapLibre GL JS を使用して地図を表示し，演説場所をマーカーとして描画する．
+ */
 export function MapView() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -38,18 +42,18 @@ export function MapView() {
 
   const { speeches, activeSpeechId, setActiveSpeechId } = useStore();
 
-  // マーカーを作成
+  // マーカーを作成する．
   const createMarker = useCallback(
     (speech: Speech): maplibregl.Marker | null => {
       if (!speech.lat || !speech.lng || !map.current) return null;
 
-      // マーカー要素を作成
+      // マーカー要素を作成する．
       const el = document.createElement("div");
       el.className = "party-marker";
       el.style.backgroundColor = speech.party_color;
       el.id = `marker-${speech.id}`;
 
-      // クリックイベント
+      // クリックイベントを設定する．
       el.addEventListener("click", () => {
         setActiveSpeechId(speech.id);
       });
@@ -65,12 +69,12 @@ export function MapView() {
 
   const isProgrammaticClose = useRef(false);
 
-  // ポップアップを表示
+  // ポップアップを表示する．
   const showPopup = useCallback(
     (speech: Speech) => {
       if (!speech.lat || !speech.lng || !map.current) return;
 
-      // 既存のポップアップを閉じる（プログラム的なのでイベント発火させない、あるいはフラグ立て）
+      // 既存のポップアップを閉じる（プログラム的な制御なのでイベントを発火させない，フラグで管理する）．
       if (popupRef.current) {
         isProgrammaticClose.current = true;
         popupRef.current.remove();
@@ -85,18 +89,66 @@ export function MapView() {
         minute: "2-digit",
       });
 
-      // スタイル調整: bgを純白からわずかにオフホワイトへ、テキスト色を調整
+      // Lucide Icons を SVG 文字列として定義する．
+      const iconColor = "#4A5568";
+      const iconStyle =
+        "width: 16px; height: 16px; flex-shrink: 0; vertical-align: middle;";
+
+      const mapPinIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="${iconStyle}"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
+
+      const clockIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="${iconStyle}"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+
+      const usersIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="${iconStyle}"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+
+      // スタイル調整: bg を純白からわずかにオフホワイトへ変更し，テキスト色を調整する．
       const popupContent = `
-      <div style="min-width: 200px;">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-          <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${speech.party_color};"></div>
-          <span style="font-size: 12px; color: #64748b; font-weight: 500;">${speech.party_name}</span>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 4px; max-width: 240px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${speech.party_color};"></div>
+            <span style="font-size: 11px; color: #64748b; font-weight: 500;">${speech.party_name}</span>
+          </div>
         </div>
-        <h3 style="font-weight: bold; color: #1e293b; margin-bottom: 4px; font-size: 16px;">${speech.candidate_name}</h3>
-        ${speech.speakers && speech.speakers.length > 0 ? `<div style="font-size: 12px; color: #475569; margin-bottom: 4px; background-color: #f1f5f9; padding: 4px; border-radius: 4px;"><span style="font-weight: bold; color: #64748b;">弁士:</span> ${speech.speakers.join(", ")}</div>` : ""}
-        <p style="font-size: 14px; color: #334155; margin-bottom: 8px;">${speech.location_name}</p>
-        <p style="font-size: 12px; color: #64748b;">${timeStr}</p>
-        ${speech.source_url ? `<a href="${speech.source_url}" target="_blank" rel="noopener noreferrer" style="font-size: 12px; color: #3b82f6; margin-top: 8px; display: inline-block; text-decoration: none; font-weight: 500;">詳細を見る →</a>` : ""}
+        
+        <h3 style="font-size: 16px; font-weight: bold; color: #1e293b; margin: 0 0 10px 0; line-height: 1.4;">
+          ${speech.candidate_name}
+        </h3>
+        
+        ${
+          speech.speakers && speech.speakers.length > 0
+            ? `
+          <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px;">
+            <div style="margin-top: 2px;">${usersIcon}</div>
+            <div>
+              <div style="font-size: 11px; font-weight: bold; color: #718096; line-height: 1;">応援弁士</div>
+              <div style="font-size: 13px; font-weight: bold; color: #374151; line-height: 1.4;">${speech.speakers.join(", ")}</div>
+            </div>
+          </div>
+        `
+            : ""
+        }
+        
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <div style="margin-top: 2px;">${mapPinIcon}</div>
+            <span style="font-size: 13px; font-weight: bold; color: #374151; line-height: 1.4;">${speech.location_name}</span>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 8px;">
+             <div>${clockIcon}</div>
+            <span style="font-size: 13px; font-weight: bold; color: #374151;">${timeStr}</span>
+          </div>
+        </div>
+        
+        ${
+          speech.source_url
+            ? `
+          <div style="text-align: right; margin-top: 8px; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+            <a href="${speech.source_url}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #3b82f6; text-decoration: none; font-weight: 500;">詳細を見る →</a>
+          </div>
+        `
+            : ""
+        }
       </div>
     `;
 
@@ -104,13 +156,13 @@ export function MapView() {
         closeButton: true,
         closeOnClick: false,
         maxWidth: "300px",
-        className: "custom-popup", // CSSでスタイル制御しやすくするため
+        className: "custom-popup", // CSS でスタイル制御しやすくするためにクラスを追加する．
       })
         .setLngLat([speech.lng, speech.lat])
         .setHTML(popupContent)
         .addTo(map.current);
 
-      // closeイベントハンドリング
+      // close イベントのハンドリングを行う．
       popup.on("close", () => {
         if (!isProgrammaticClose.current) {
           setActiveSpeechId(null);
@@ -119,7 +171,7 @@ export function MapView() {
 
       popupRef.current = popup;
 
-      // 地図を移動
+      // 地図を指定座標へ移動する．
       map.current.flyTo({
         center: [speech.lng, speech.lat],
         zoom: 15,
@@ -129,19 +181,19 @@ export function MapView() {
     [setActiveSpeechId],
   );
 
-  // 地図の初期化
+  // 地図の初期化を行う．
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: OSM_STYLE,
-      center: [139.6917, 35.6895], // 東京
+      center: [139.6917, 35.6895], // 東京を中心に初期化する．
       zoom: 10,
       attributionControl: false,
     });
 
-    // コントロールを追加
+    // コントロールを追加する．
     map.current.addControl(new maplibregl.NavigationControl(), "top-right");
     map.current.addControl(
       new maplibregl.GeolocateControl({
@@ -165,17 +217,17 @@ export function MapView() {
     };
   }, []);
 
-  // マーカーの更新
+  // マーカーの更新を行う．
   useEffect(() => {
     if (!map.current) return;
 
-    // 既存のマーカーを削除
+    // 既存のマーカーを削除する．
     markersRef.current.forEach(marker => {
       marker.remove();
     });
     markersRef.current.clear();
 
-    // 新しいマーカーを追加
+    // 新しいマーカーを追加する．
     speeches.forEach(speech => {
       const marker = createMarker(speech);
       if (marker) {
@@ -184,15 +236,15 @@ export function MapView() {
     });
   }, [speeches, createMarker]);
 
-  // アクティブな演説が変更されたとき
+  // アクティブな演説が変更されたときの処理．
   useEffect(() => {
-    // 全てのマーカーのアクティブ状態をリセット
+    // 全てのマーカーのアクティブ状態をリセットする．
     markersRef.current.forEach((marker, id) => {
       const el = marker.getElement();
       el.classList.toggle("active", id === activeSpeechId);
     });
 
-    // ポップアップを表示
+    // ポップアップを表示する．
     if (activeSpeechId) {
       const speech = speeches.find(s => s.id === activeSpeechId);
       if (speech) {

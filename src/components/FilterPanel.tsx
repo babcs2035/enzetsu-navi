@@ -1,23 +1,14 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  Heading,
-  IconButton,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
-import { Check, X } from "lucide-react";
+import { Box, Button, Flex, Text, VStack } from "@chakra-ui/react";
+import { Check } from "lucide-react";
 import { useStore } from "@/store/useStore";
 
-interface FilterPanelProps {
-  onClose: () => void;
-}
-
-export function FilterPanel({ onClose }: FilterPanelProps) {
+/**
+ * フィルターパネルコンポーネント．
+ * 政党によるフィルタリング機能を提供する．
+ */
+export function FilterPanel() {
   const { parties, filter, setFilter, resetFilter } = useStore();
 
   const toggleParty = (partyId: number) => {
@@ -27,70 +18,29 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
     setFilter({ selectedPartyIds: newIds });
   };
 
-  const selectAllParties = () => {
-    setFilter({ selectedPartyIds: parties.map(p => p.id) });
-  };
-
   const deselectAllParties = () => {
     setFilter({ selectedPartyIds: [] });
   };
 
   return (
-    <Box
-      bg="whiteAlpha.900"
-      backdropFilter="blur(12px)"
-      border="1px solid"
-      borderColor="gray.200"
-      borderRadius="2xl"
-      p={4}
-      w="72"
-      boxShadow="lg"
-    >
-      <Flex align="center" justify="space-between" mb={4}>
-        <Heading size="sm" color="gray.800">
-          フィルター
-        </Heading>
-        <IconButton
-          aria-label="閉じる"
-          onClick={onClose}
-          variant="ghost"
-          size="sm"
-          color="gray.600"
-          _hover={{ bg: "gray.100" }}
-        >
-          <X size={16} />
-        </IconButton>
-      </Flex>
-
-      {/* 政党フィルター */}
+    <Box>
       <Box mb={4}>
         <Flex align="center" justify="space-between" mb={2}>
           <Text fontSize="sm" color="gray.500">
             政党
           </Text>
-          <Flex gap={2}>
-            <Button
-              variant="plain"
-              size="xs"
-              color="blue.500"
-              onClick={selectAllParties}
-              _hover={{ textDecoration: "underline" }}
-            >
-              全選択
-            </Button>
-            <Button
-              variant="plain"
-              size="xs"
-              color="gray.400"
-              onClick={deselectAllParties}
-              _hover={{ textDecoration: "underline" }}
-            >
-              解除
-            </Button>
-          </Flex>
+          <Button
+            variant="plain"
+            size="xs"
+            color="blue.500"
+            onClick={deselectAllParties}
+            _hover={{ textDecoration: "underline" }}
+          >
+            すべて選択
+          </Button>
         </Flex>
 
-        <VStack gap={1.5} maxH="64" overflowY="auto" align="stretch">
+        <VStack gap={1.5} align="stretch" maxH="60vh" overflowY="auto">
           {parties.map(party => {
             const isSelected =
               filter.selectedPartyIds.length === 0 ||
@@ -130,86 +80,6 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
         </VStack>
       </Box>
 
-      {/* 期間フィルター */}
-      <Box mb={4}>
-        <Text fontSize="sm" color="gray.500" mb={2}>
-          期間
-        </Text>
-        <VStack align="stretch" gap={2}>
-          {(["today", "upcoming", "all"] as const).map(mode => {
-            const isSelected = filter.dateMode === mode;
-            let label = "";
-            switch (mode) {
-              case "today":
-                label = "本日の演説";
-                break;
-              case "upcoming":
-                label = "これから実施される演説";
-                break;
-              case "all":
-                label = "すべての演説（過去含む）";
-                break;
-            }
-
-            return (
-              <Button
-                key={mode}
-                onClick={() => setFilter({ dateMode: mode })}
-                variant={isSelected ? "solid" : "outline"}
-                colorScheme="blue"
-                size="sm"
-                justifyContent="flex-start"
-                bg={isSelected ? "blue.500" : "transparent"}
-                color={isSelected ? "white" : "gray.700"}
-                borderColor={isSelected ? "blue.500" : "gray.200"}
-                _hover={{
-                  bg: isSelected ? "blue.600" : "gray.50",
-                }}
-              >
-                {label}
-              </Button>
-            );
-          })}
-        </VStack>
-      </Box>
-
-      {/* 表示オプション */}
-      <Box borderTop="1px solid" borderColor="gray.100" pt={4}>
-        <Checkbox.Root
-          checked={filter.showWithLocationOnly}
-          onCheckedChange={e =>
-            setFilter({ showWithLocationOnly: !!e.checked })
-          }
-          colorPalette="blue"
-          display="flex"
-          alignItems="center"
-          gap={2}
-        >
-          <Checkbox.HiddenInput />
-          <Checkbox.Control
-            bg="white"
-            borderColor="gray.300"
-            _checked={{ bg: "blue.500", borderColor: "blue.500" }}
-            borderRadius="sm"
-            width={4}
-            height={4}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Checkbox.Indicator>
-              <Check size={12} color="white" />
-            </Checkbox.Indicator>
-          </Checkbox.Control>
-          <Checkbox.Label>
-            <Text fontSize="sm" color="gray.600">
-              座標のあるデータのみ表示
-            </Text>
-          </Checkbox.Label>
-        </Checkbox.Root>
-      </Box>
-
-      {/* リセットボタン */}
       <Button
         onClick={resetFilter}
         variant="ghost"

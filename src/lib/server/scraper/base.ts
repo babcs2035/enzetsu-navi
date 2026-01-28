@@ -32,7 +32,7 @@ export abstract class BaseScraper {
       where: { name: this.partyName },
     });
     if (!party) {
-      throw new Error(`政党 '${this.partyName}' がデータベースに存在しません`);
+      throw new Error(`Party '${this.partyName}' not found in database`);
     }
     return party;
   }
@@ -52,7 +52,7 @@ export abstract class BaseScraper {
           partyId,
         },
       });
-      console.log(`新しい候補者を作成: ${name} (${this.partyName})`);
+      console.log(`👤 Created new candidate: ${name} (${this.partyName})`);
     }
     return candidate;
   }
@@ -65,7 +65,7 @@ export abstract class BaseScraper {
         party.id,
       );
 
-      // 重複チェック (候補者と日時のみで判定)
+      // 重複チェック（候補者と日時のみで判定）を行う．
       const existing = await prisma.speech.findFirst({
         where: {
           candidateId: candidate.id,
@@ -74,12 +74,12 @@ export abstract class BaseScraper {
       });
 
       if (existing) {
-        // 既存データのspeakersと新しいspeakersをマージ（重複排除）
+        // 既存データの speakers と新しい speakers をマージする（重複排除）．
         const newSpeakers = Array.from(
           new Set([...(existing.speakers || []), ...(data.speakers || [])]),
         );
 
-        // speakersに変更があれば更新
+        // speakers に変更があれば更新する．
         if (newSpeakers.length !== existing.speakers.length) {
           const updated = await prisma.speech.update({
             where: { id: existing.id },
@@ -89,7 +89,7 @@ export abstract class BaseScraper {
             },
           });
           console.log(
-            `演説データを更新 (弁士追加): ${data.candidate_name} - ${data.location_name} (弁士: ${newSpeakers.join(", ")})`,
+            `🔄 Updated speech (speakers added): ${data.candidate_name} - ${data.location_name} (Speakers: ${newSpeakers.join(", ")})`,
           );
           return updated;
         }
@@ -97,7 +97,7 @@ export abstract class BaseScraper {
         return existing;
       }
 
-      // ジオコーディング
+      // ジオコーディングを実行する．
       const searchAddr = data.address || data.location_name;
       const location = await geocodeLocation(searchAddr);
 
@@ -109,32 +109,24 @@ export abstract class BaseScraper {
           sourceUrl: data.source_url,
           lat: location?.lat,
           lng: location?.lng,
-          address: location?.address || data.address, // API結果優先、なければスクレイピング結果
-          speakers: data.speakers || [], // 配列として保存
+          address: location?.address || data.address, // API 結果優先，なければスクレイピング結果を使用する．
+          speakers: data.speakers || [], // 配列として保存する．
         },
       });
 
       console.log(
-        `演説データを保存: ${data.candidate_name} - ${data.location_name} (弁士: ${(data.speakers || []).join(", ")})`,
+        `✅ Saved speech: ${data.candidate_name} - ${data.location_name} (Speakers: ${(data.speakers || []).join(", ")})`,
       );
       return speech;
     } catch (error) {
-      console.error(`保存エラー (${this.partyName}):`, error);
+      console.error(`❌ Save error (${this.partyName}):`, error);
       return null;
     }
   }
 
   protected parseDateTime(text: string): Date | null {
-    // 簡易的なパース処理
-    const match = text.match(/20\d{2}/);
-    if (!match) {
-      // 年が含まれていない場合は今年とみなす等の補正が必要だが
-      // Python版も正規表現でマッチさせていた。
-      // パターン: "(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})"
-      // 等
-    }
-
-    // YYYY年MM月DD日 HH:mm
+    // 簡易的なパース処理を行う．
+    // YYYY年MM月DD日 HH:mm または YYYY/MM/DD HH:mm 形式に対応する．
     const jpPattern = /(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})/;
     const slashPattern = /(\d{4})\/(\d{1,2})\/(\d{1,2})\s*(\d{1,2}):(\d{2})/;
 
@@ -155,7 +147,7 @@ export abstract class BaseScraper {
   abstract scrape(): Promise<SpeechData[]>;
 
   async run(): Promise<number> {
-    console.log(`スクレイピング開始: ${this.partyName}`);
+    console.log(`🚀 Scraping started: ${this.partyName}`);
     try {
       const speechesData = await this.scrape();
       let savedCount = 0;
@@ -167,11 +159,11 @@ export abstract class BaseScraper {
         }
       }
       console.log(
-        `スクレイピング完了: ${this.partyName} - ${savedCount}件保存`,
+        `🎉 Scraping completed: ${this.partyName} - ${savedCount} saved`,
       );
       return savedCount;
     } catch (error) {
-      console.error(`スクレイピング実行エラー (${this.partyName}):`, error);
+      console.error(`💥 Scraping execution error (${this.partyName}):`, error);
       throw error;
     }
   }

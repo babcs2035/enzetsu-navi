@@ -1,5 +1,5 @@
 /**
- * コンポーネントのエクスポート
+ * コンポーネントのエクスポートを行う．
  */
 
 export { FilterPanel } from "./FilterPanel";

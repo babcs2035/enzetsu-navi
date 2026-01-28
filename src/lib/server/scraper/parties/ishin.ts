@@ -14,14 +14,14 @@ export class IshinScraper extends BaseScraper {
         await page.goto(this.baseUrl, { timeout: 30000 });
       } catch (e) {
         console.warn(
-          `Ishinスクレイピング: ページアクセス失敗 (${this.baseUrl}):`,
+          `⚠️ Ishin scraping: Failed to access page (${this.baseUrl}):`,
           e,
         );
         await browser.close();
         return [];
       }
 
-      // ページ内の年表記を取得
+      // ページ内の年表記を取得する．
       let year = new Date().getFullYear();
       try {
         const yearElem = await page.$(".h3title");
@@ -33,7 +33,7 @@ export class IshinScraper extends BaseScraper {
           }
         }
       } catch (e) {
-        console.warn("Ishin: 年の取得に失敗、現在年を使用します", e);
+        console.warn("⚠️ Ishin: Failed to get year, using current year", e);
       }
 
       const rows = await page.$$(".scheduleBox01 table tr");
@@ -41,21 +41,21 @@ export class IshinScraper extends BaseScraper {
 
       for (const row of rows) {
         try {
-          // 日付 (th.date) - rowspanされている場合があるため、見つかれば更新
+          // 日付 (th.date) - rowspan されている場合があるため，見つかれば更新する．
           const dateElem = await row.$("th.date");
           if (dateElem) {
             currentDateStr = (await dateElem.innerText()).trim();
           }
 
-          // 時間
+          // 時間の取得を行う．
           const timeElem = await row.$("td.time");
-          if (!timeElem) continue; // ヘッダー行などの場合はスキップ
+          if (!timeElem) continue; // ヘッダー行などの場合はスキップする．
           const timeText = (await timeElem.innerText()).trim();
 
-          // 解析できない日付・時間ならスキップ
+          // 解析できない日付・時間ならスキップする．
           if (!currentDateStr || !timeText) continue;
 
-          // 場所
+          // 場所の取得を行う．
           const placeElem = await row.$("td.place");
           if (!placeElem) continue;
 
@@ -65,16 +65,15 @@ export class IshinScraper extends BaseScraper {
           const link = await placeElem.$("a");
           if (link) {
             locationName = (await link.innerText()).trim();
-            // リンクがある場合、残りのテキストを住所として取得
-            // innerText全体を取得し、locationNameを除外する簡易実装
+            // リンクがある場合，残りのテキストを住所として取得する．
             const fullText = await placeElem.innerText();
-            // locationNameを除外し、残りを結合
+            // locationName を除外し，残りを結合する．
             address = fullText
               .replace(locationName, "")
               .replace(/[\n\r]+/g, " ")
               .trim();
           } else {
-            // テキストのみの場合
+            // テキストのみの場合の処理を行う．
             const fullText = await placeElem.innerText();
             const lines = fullText
               .split("\n")
@@ -89,30 +88,27 @@ export class IshinScraper extends BaseScraper {
           }
           if (!locationName) continue;
 
-          // 弁士・候補者の取得
+          // 弁士・候補者の取得を行う．
           const spielerElem = await row.$("td.spieler");
-          const speakers: string[] = []; // borderで囲われている人名（span）
+          const speakers: string[] = []; // border で囲われている人名（span）
           const candidates: string[] = []; // 「弁士：」のあとにある人名（p）
 
           if (spielerElem) {
-            // span要素（border囲み＝弁士扱い）
+            // span 要素（border 囲み＝弁士扱い）を取得する．
             const spans = await spielerElem.$$("span");
             for (const span of spans) {
               const text = (await span.innerText()).trim();
               if (text) speakers.push(text);
             }
 
-            // p要素（候補者扱い）
+            // p 要素（候補者扱い）を取得する．
             const ps = await spielerElem.$$("p");
             for (const p of ps) {
               let text = (await p.innerText()).trim();
-              // "弁士：" 等の削除
+              // "弁士：" 等を削除する．
               if (text.includes("弁士")) {
                 text = text.replace(/^.*弁士[:：]/, "").trim();
-                // プレフィックス（"衆議院...候補者"など）とサフィックス（"他"）の削除
-                // "候補者" という単語のあとにある名前を取得する戦略
-                // 例: "衆議院千葉県第9区候補者 田沼たかし 他" -> "田沼たかし"
-                // より汎用的に： "〜候補者" の後ろにある文字列を取得し、" 他" を消す
+                // プレフィックス（"衆議院...候補者" など）とサフィックス（"他"）を削除する．
                 const candidateMatch = text.match(
                   /(?:候補者|支部長)\s+([^\s]+)/,
                 );
@@ -126,7 +122,7 @@ export class IshinScraper extends BaseScraper {
             }
           }
 
-          // 日時のパース
+          // 日時のパース処理を行う．
           // 例: "1月28日（水）"
           const dateMatch = currentDateStr.match(/(\d{1,2})月(\d{1,2})日/);
           if (dateMatch) {
@@ -144,34 +140,28 @@ export class IshinScraper extends BaseScraper {
               !Number.isNaN(hour) &&
               !Number.isNaN(minute)
             ) {
-              // 月は0-indexed
+              // 月は 0-indexed で処理する．
               const startAt = new Date(year, month - 1, day, hour, minute);
 
-              // 候補者ごとにエントリーを作成
-              // 候補者がいない場合は登録しない
+              // 候補者ごとにエントリーを作成する．
               for (const candidateName of candidates) {
-                // speakersリストには候補者自身を含めない方が自然か、あるいは全員含めるか。
-                // LDPの実装に合わせて、speakersには「candidate以外の参加弁士」を入れるのが良さそうだが、
-                // ここでは全ての表記されている「弁士(span)」をspeakersに入れる。
-                // candidateNameがspeakersに含まれている場合の除外処理などは一旦しない。
-
                 speeches.push({
                   candidate_name: candidateName,
                   start_at: startAt,
                   location_name: locationName,
                   source_url: this.baseUrl,
-                  speakers: speakers, // spanで見つかった人たち
-                  address, // 追加した住所
+                  speakers: speakers, // span で見つかった人たちを設定する．
+                  address, // 追加した住所を設定する．
                 });
               }
             }
           }
         } catch (e) {
-          console.warn("Ishin行パースエラー:", e);
+          console.warn("⚠️ Ishin row parse error:", e);
         }
       }
     } catch (e) {
-      console.error("Ishinスクレイピング全体エラー:", e);
+      console.error("❌ Ishin total scraping error:", e);
     } finally {
       await browser.close();
     }

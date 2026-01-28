@@ -27,6 +27,10 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * ルートレイアウトコンポーネント．
+ * アプリケーション全体の基本レイアウトとプロバイダーの設定を行う．
+ */
 export default function RootLayout({
   children,
 }: {

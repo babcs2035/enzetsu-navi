@@ -10,6 +10,10 @@ interface SidebarProps {
   children: ReactNode;
 }
 
+/**
+ * サイドバーコンポーネント．
+ * 演説リストを表示するためのコンテナとして機能し，モバイル表示時のオーバーレイも管理する．
+ */
 export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
   return (
     <>
@@ -25,7 +29,7 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
         />
       )}
 
-      {/* サイドバー */}
+      {/* サイドバー本体 */}
       <Box
         as="aside"
         position={{ base: "fixed", lg: "relative" }}

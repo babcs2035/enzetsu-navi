@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 
+/**
+ * 統計情報表示コンポーネント．
+ * 登録されている演説データ，候補者，政党の総数などを表示する．
+ */
 export function Stats() {
   const { stats, isLoading } = useStore();
 
@@ -66,7 +70,7 @@ export function Stats() {
           </Flex>
         ))}
 
-        {/* 座標不明件数 */}
+        {/* 座標不明件数の表示 */}
         {stats.speeches_without_location > 0 && (
           <Flex
             align="center"
@@ -88,7 +92,7 @@ export function Stats() {
         )}
       </Flex>
 
-      {/* 最終更新時刻 */}
+      {/* 最終更新時刻の表示 */}
       {stats.last_updated && (
         <Flex
           align="center"

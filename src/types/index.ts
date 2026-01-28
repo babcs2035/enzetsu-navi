@@ -1,8 +1,8 @@
 /**
- * 型定義
+ * アプリケーション全体で使用する型定義を提供する．
  */
 
-// 政党
+// 政党に関する型定義．
 export interface Party {
   id: number;
   name: string;
@@ -11,7 +11,7 @@ export interface Party {
   updated_at: string;
 }
 
-// 候補者
+// 候補者に関する型定義．
 export interface Candidate {
   id: number;
   name: string;
@@ -22,7 +22,7 @@ export interface Candidate {
   updated_at: string;
 }
 
-// 演説データ
+// 演説データに関する型定義．
 export interface Speech {
   id: number;
   start_at: string;
@@ -41,7 +41,7 @@ export interface Speech {
   updated_at: string;
 }
 
-// 統計情報
+// 統計情報に関する型定義．
 export interface Stats {
   total_speeches: number;
   total_candidates: number;
@@ -51,18 +51,17 @@ export interface Stats {
   last_updated: string | null;
 }
 
-// フィルターモード
+// フィルターの日付モードに関する型定義．
 export type DateMode = "today" | "upcoming" | "all";
 
-// フィルター状態
+// フィルターのステータスに関する型定義．
 export interface FilterState {
   dateMode: DateMode;
   selectedPartyIds: number[];
   selectedCandidateIds: number[];
-  showWithLocationOnly: boolean;
 }
 
-// API レスポンス
+// API レスポンスに関する型定義．
 export interface ApiResponse<T> {
   data: T | null;
   error: string | null;

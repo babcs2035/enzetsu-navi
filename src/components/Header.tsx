@@ -8,6 +8,10 @@ interface HeaderProps {
   onToggleFilter: () => void;
 }
 
+/**
+ * ヘッダーコンポーネント．
+ * アプリケーションのタイトルと，サイドバー・フィルターの切り替えボタンを表示する．
+ */
 export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
   return (
     <Flex

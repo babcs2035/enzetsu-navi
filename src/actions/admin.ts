@@ -11,7 +11,7 @@ const SCRAPERS: Record<string, new () => BaseScraper> = {
 
 export async function scrapeAll() {
   const results = [];
-  // 全スクレイパー実行
+  // 全スクレイパーを実行する．
   const scrapers = Object.values(SCRAPERS).map(
     ScraperClass => new ScraperClass(),
   );

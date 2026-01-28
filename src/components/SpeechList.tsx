@@ -15,13 +15,17 @@ import { AlertCircle, Clock, ExternalLink, MapPin, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useStore } from "@/store/useStore";
 
+/**
+ * 演説リスト表示コンポーネント．
+ * 取得した演説データをリスト形式で表示し，選択時の挙動などを制御する．
+ */
 export function SpeechList() {
   const { speeches, activeSpeechId, setActiveSpeechId, isLoading, error } =
     useStore();
   const listRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // アクティブな演説にスクロール
+  // アクティブな演説にスクロールする．
   useEffect(() => {
     if (activeSpeechId) {
       const cardEl = cardRefs.current.get(activeSpeechId);
@@ -31,7 +35,7 @@ export function SpeechList() {
     }
   }, [activeSpeechId]);
 
-  // ローディング表示
+  // ローディング表示を行う．
   if (isLoading && speeches.length === 0) {
     return (
       <Flex align="center" justify="center" h="full">
@@ -45,7 +49,7 @@ export function SpeechList() {
     );
   }
 
-  // エラー表示
+  // エラー表示を行う．
   if (error) {
     return (
       <Flex align="center" justify="center" h="full" p={4}>
@@ -60,7 +64,7 @@ export function SpeechList() {
     );
   }
 
-  // データなし
+  // データがない場合の表示を行う．
   if (speeches.length === 0) {
     return (
       <Flex align="center" justify="center" h="full" p={4}>
@@ -124,25 +128,18 @@ export function SpeechList() {
                 </Text>
               </Flex>
 
-              {/* 候補者名 */}
-              <Heading size="sm" color="gray.800" mb={3}>
+              {/* 候補者名 - 最大かつ最重要 */}
+              <Heading size="md" color="gray.800" mb={3} lineHeight="shorter">
                 {speech.candidate_name}
               </Heading>
 
-              {/* 弁士情報 (あれば表示) */}
+              {/* 弁士情報（あれば表示する） - 場所などと同様のスタイリングに変更する． */}
               {speech.speakers && speech.speakers.length > 0 && (
-                <Flex
-                  align="flex-start"
-                  gap={2}
-                  mb={2}
-                  p={2}
-                  bg="gray.50"
-                  borderRadius="md"
-                >
+                <Flex align="flex-start" gap={2.5} mb={2}>
                   <Users
-                    size={14}
-                    color="#718096"
-                    style={{ marginTop: 2, flexShrink: 0 }}
+                    size={16}
+                    color="#4A5568"
+                    style={{ marginTop: 3, flexShrink: 0 }}
                   />
                   <Box>
                     <Text
@@ -150,78 +147,86 @@ export function SpeechList() {
                       color="gray.500"
                       fontWeight="bold"
                       mb={0.5}
+                      lineHeight="shorter"
                     >
                       応援弁士
                     </Text>
-                    <Text fontSize="sm" color="gray.700">
+                    <Text
+                      fontSize="sm"
+                      fontWeight="bold"
+                      color="gray.700"
+                      lineHeight="base"
+                    >
                       {speech.speakers.join(", ")}
                     </Text>
                   </Box>
                 </Flex>
               )}
 
-              {/* 場所 */}
-              <Flex align="flex-start" gap={2} mb={2}>
-                <MapPin
-                  size={16}
-                  color="#718096"
-                  style={{ marginTop: 2, flexShrink: 0 }}
-                />
-                <Box>
-                  <Text fontSize="sm" color="gray.700">
-                    {speech.location_name}
-                  </Text>
-                  {speech.address && (
-                    <Text fontSize="xs" color="gray.500" mt={0.5}>
-                      {speech.address}
+              {/* 場所と時間 - 同じスタイリングで統一する． */}
+              <VStack align="stretch" gap={2}>
+                <Flex align="flex-start" gap={2.5}>
+                  <MapPin
+                    size={16}
+                    color="#4A5568"
+                    style={{ marginTop: 3, flexShrink: 0 }}
+                  />
+                  <Box>
+                    <Text
+                      fontSize="sm"
+                      fontWeight="bold"
+                      color="gray.700"
+                      lineHeight="base"
+                    >
+                      {speech.location_name}
                     </Text>
-                  )}
-                  {!speech.lat && (
-                    <Flex align="center" gap={1} mt={1}>
-                      <AlertCircle size={12} color="#ECC94B" />
-                      <Text fontSize="xs" color="yellow.600">
-                        座標不明 - 地図に表示されません
+                    {speech.address && (
+                      <Text fontSize="xs" color="gray.500" mt={0.5}>
+                        {speech.address}
                       </Text>
-                    </Flex>
+                    )}
+                    {!speech.lat && (
+                      <Flex align="center" gap={1} mt={1}>
+                        <AlertCircle size={12} color="#ECC94B" />
+                        <Text fontSize="xs" color="yellow.600">
+                          座標不明 - 地図に表示されません
+                        </Text>
+                      </Flex>
+                    )}
+                  </Box>
+                </Flex>
+
+                <Flex align="center" gap={2.5}>
+                  <Clock size={16} color="#4A5568" style={{ flexShrink: 0 }} />
+                  <Text fontSize="sm" fontWeight="bold" color="gray.700">
+                    {format(startTime, "M月d日（E） HH:mm", { locale: ja })}
+                  </Text>
+
+                  {/* ソースリンク（右寄せ） */}
+                  {speech.source_url && (
+                    <Link
+                      href={speech.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      display="inline-flex"
+                      alignItems="center"
+                      gap={1}
+                      ml="auto"
+                      color="blue.500"
+                      fontSize="xs"
+                      fontWeight="normal"
+                      _hover={{
+                        color: "blue.600",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      <ExternalLink size={12} />
+                      出典
+                    </Link>
                   )}
-                </Box>
-              </Flex>
-
-              {/* 時刻 */}
-              <Flex
-                align="center"
-                gap={2}
-                fontSize="xs"
-                color="gray.500"
-                mt={3}
-                pt={2}
-                borderTopWidth="1px"
-                borderColor="gray.100"
-              >
-                <Clock size={14} />
-                <Text>
-                  {format(startTime, "M月d日（E） HH:mm", { locale: ja })}
-                </Text>
-
-                {/* ソースリンク (右寄せ) */}
-                {speech.source_url && (
-                  <Link
-                    href={speech.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    display="inline-flex"
-                    alignItems="center"
-                    gap={1}
-                    ml="auto"
-                    color="blue.500"
-                    _hover={{ color: "blue.600", textDecoration: "underline" }}
-                  >
-                    <ExternalLink size={12} />
-                    出典
-                  </Link>
-                )}
-              </Flex>
+                </Flex>
+              </VStack>
             </Box>
           );
         })}

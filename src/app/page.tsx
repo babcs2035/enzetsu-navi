@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Flex, Spinner, Text, VStack } from "@chakra-ui/react";
+import { Box, Dialog, Flex, Spinner, Text, VStack } from "@chakra-ui/react";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { FilterPanel } from "@/components/FilterPanel";
@@ -11,7 +11,7 @@ import { Stats } from "@/components/Stats";
 import { TimeSlider } from "@/components/TimeSlider";
 import { useStore } from "@/store/useStore";
 
-// MapLibreはSSRと互換性がないため、動的インポート
+// MapLibre は SSR と互換性がないため，動的インポートを使用する．
 const MapView = dynamic(
   () => import("@/components/MapView").then(mod => mod.MapView),
   {
@@ -27,6 +27,10 @@ const MapView = dynamic(
   },
 );
 
+/**
+ * ホームページコンポーネント．
+ * 地図，リスト，フィルターなどの主要コンポーネントを統合し，メインの UI を構成する．
+ */
 export default function HomePage() {
   const fetchParties = useStore(state => state.fetchParties);
   const fetchSpeeches = useStore(state => state.fetchSpeeches);
@@ -35,9 +39,9 @@ export default function HomePage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 初期化時のみ実行
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 初期化時のみ実行するため dependency array は空とする．
   useEffect(() => {
-    // 初期データ取得
+    // 初期データの取得を行う．
     fetchParties();
     fetchSpeeches();
     fetchStats();
@@ -45,18 +49,18 @@ export default function HomePage() {
 
   return (
     <Flex direction="column" h="100vh" overflow="hidden" bg="gray.50">
-      {/* ヘッダー */}
+      {/* ヘッダーを表示する． */}
       <Header
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onToggleFilter={() => setIsFilterOpen(!isFilterOpen)}
       />
 
       <Flex flex={1} overflow="hidden">
-        {/* メインコンテンツ（地図） */}
+        {/* メインコンテンツ（地図）を表示する． */}
         <Box flex={1} position="relative">
           <MapView />
 
-          {/* タイムスライダー */}
+          {/* タイムスライダーを表示する． */}
           <Box
             position="absolute"
             bottom={6}
@@ -70,20 +74,50 @@ export default function HomePage() {
             <TimeSlider />
           </Box>
 
-          {/* 統計情報 */}
+          {/* 統計情報を表示する． */}
           <Box position="absolute" top={4} left={4} zIndex={10}>
             <Stats />
           </Box>
 
-          {/* フィルターパネル */}
-          {isFilterOpen && (
-            <Box position="absolute" top={4} right={4} zIndex={20}>
-              <FilterPanel onClose={() => setIsFilterOpen(false)} />
-            </Box>
-          )}
+          {/* フィルターモーダルを表示する． */}
+          <Dialog.Root
+            open={isFilterOpen}
+            onOpenChange={e => setIsFilterOpen(e.open)}
+          >
+            <Dialog.Backdrop />
+            <Dialog.Positioner>
+              <Dialog.Content
+                bg="whiteAlpha.950"
+                backdropFilter="blur(16px)"
+                borderRadius="2xl"
+                boxShadow="xl"
+                p={2}
+              >
+                <Dialog.CloseTrigger
+                  position="absolute"
+                  top={3}
+                  right={3}
+                  color="gray.500"
+                  _hover={{ bg: "gray.100" }}
+                />
+                <Dialog.Header p={4} pb={2}>
+                  <Dialog.Title
+                    fontSize="lg"
+                    fontWeight="bold"
+                    color="gray.800"
+                  >
+                    フィルター
+                  </Dialog.Title>
+                </Dialog.Header>
+                <Dialog.Body p={4} pt={2}>
+                  <FilterPanel />
+                </Dialog.Body>
+              </Dialog.Content>
+            </Dialog.Positioner>
+          </Dialog.Root>
         </Box>
 
-        {/* サイドバー（演説リスト） */}
+        {/* サイドバー（演説リスト）を表示する． */}
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}>
           <SpeechList />
         </Sidebar>
