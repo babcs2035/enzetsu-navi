@@ -4,16 +4,16 @@ const prisma = new PrismaClient();
 
 async function main() {
   const parties = [
-    { name: "自由民主党", color: "#314b9b" },
-    { name: "立憲民主党", color: "#1e4d8e" },
-    { name: "日本維新の会", color: "#38b16a" },
-    { name: "公明党", color: "#f39800" },
-    { name: "日本共産党", color: "#db0027" },
-    { name: "国民民主党", color: "#ffb700" },
-    { name: "れいわ新選組", color: "#ed6d8a" },
-    { name: "社会民主党", color: "#22a7e5" },
-    { name: "参政党", color: "#ff8c00" },
-    { name: "無所属", color: "#808080" },
+    { name: "自由民主党", color: "#d22319" },
+    { name: "日本維新の会", color: "#e19a00" },
+    { name: "中道改革連合", color: "#5582ff" },
+    { name: "国民民主党", color: "#0010a5" },
+    { name: "日本共産党", color: "#6e41e1" },
+    { name: "れいわ新選組", color: "#f0a0a7" },
+    { name: "参政党", color: "#eb640a" },
+    { name: "日本保守党", color: "#9696f0" },
+    { name: "社会民主党", color: "#05555a" },
+    { name: "チームみらい", color: "#aa8728" },
   ];
 
   for (const party of parties) {
