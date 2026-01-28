@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/IMAGE_NAME_PLACEHOLDER:latest
+    image: ghcr.io/babcs2035/enzetsu-navi:latest
     container_name: enzetsu-app
     restart: unless-stopped
     ports:
