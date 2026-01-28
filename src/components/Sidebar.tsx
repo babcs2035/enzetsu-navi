@@ -35,10 +35,11 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
         zIndex={40}
         w="full"
         maxW={{ base: "md", lg: "sm", xl: "md" }}
-        bg="whiteAlpha.50"
+        bg="whiteAlpha.900"
         backdropFilter="blur(12px)"
         borderLeft="1px solid"
-        borderColor="whiteAlpha.100"
+        borderColor="gray.200"
+        boxShadow="xl"
         transform={{
           base: isOpen ? "translateX(0)" : "translateX(100%)",
           lg: isOpen ? "translateX(0)" : "translateX(100%)",
@@ -52,11 +53,12 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
           align="center"
           justify="space-between"
           p={4}
+          className=""
           borderBottom="1px solid"
-          borderColor="whiteAlpha.100"
+          borderColor="gray.200"
           display={{ lg: "none" }}
         >
-          <Heading size="sm" color="white">
+          <Heading size="sm" color="gray.800">
             演説リスト
           </Heading>
           <IconButton
@@ -64,8 +66,8 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
             onClick={onClose}
             variant="ghost"
             size="sm"
-            color="whiteAlpha.800"
-            _hover={{ bg: "whiteAlpha.100" }}
+            color="gray.600"
+            _hover={{ bg: "gray.100" }}
           >
             <X size={20} />
           </IconButton>

@@ -17,10 +17,10 @@ const MapView = dynamic(
   {
     ssr: false,
     loading: () => (
-      <Flex w="full" h="full" align="center" justify="center" bg="gray.900">
+      <Flex w="full" h="full" align="center" justify="center" bg="gray.50">
         <VStack gap={4}>
-          <Spinner size="xl" color="purple.500" borderWidth="4px" />
-          <Text color="whiteAlpha.600">地図を読み込み中...</Text>
+          <Spinner size="xl" color="blue.500" borderWidth="4px" />
+          <Text color="gray.600">地図を読み込み中...</Text>
         </VStack>
       </Flex>
     ),
@@ -28,24 +28,27 @@ const MapView = dynamic(
 );
 
 export default function HomePage() {
-  const { fetchParties, fetchSpeeches, fetchStats } = useStore();
+  const fetchParties = useStore(state => state.fetchParties);
+  const fetchSpeeches = useStore(state => state.fetchSpeeches);
+  const fetchStats = useStore(state => state.fetchStats);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 初期化時のみ実行
   useEffect(() => {
     // 初期データ取得
     fetchParties();
     fetchSpeeches();
     fetchStats();
-  }, [fetchParties, fetchSpeeches, fetchStats]);
+  }, []);
 
   return (
-    <Flex direction="column" h="100vh" overflow="hidden" bg="gray.900">
+    <Flex direction="column" h="100vh" overflow="hidden" bg="gray.50">
       {/* ヘッダー */}
       <Header
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onToggleFilter={() => setIsFilterOpen(!isFilterOpen)}
-        isSidebarOpen={isSidebarOpen}
       />
 
       <Flex flex={1} overflow="hidden">
@@ -62,12 +65,13 @@ export default function HomePage() {
             w="full"
             maxW="2xl"
             px={4}
+            zIndex={10}
           >
             <TimeSlider />
           </Box>
 
           {/* 統計情報 */}
-          <Box position="absolute" top={4} left={4}>
+          <Box position="absolute" top={4} left={4} zIndex={10}>
             <Stats />
           </Box>
 

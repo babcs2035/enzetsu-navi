@@ -29,6 +29,7 @@ function formatSpeech(s: any) {
     lat: s.lat,
     lng: s.lng,
     source_url: s.sourceUrl,
+    speakers: s.speakers,
     created_at: s.createdAt,
   };
 }

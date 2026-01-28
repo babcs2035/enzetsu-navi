@@ -38,7 +38,7 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           tags: ${{ env.REGISTRY }}/babcs2035/enzetsu-navi:latest, ${{ env.REGISTRY }}/babcs2035/enzetsu-navi:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -59,7 +59,7 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           target: ${{ secrets.DEPLOY_TARGET }}
-          source: "docker-compose.production.yml, database/init.sql"
+          source: "docker-compose.production.yml"
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master

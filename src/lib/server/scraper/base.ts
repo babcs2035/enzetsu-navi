@@ -7,6 +7,7 @@ export interface SpeechData {
   start_at: Date;
   location_name: string;
   source_url?: string;
+  speakers?: string[];
 }
 
 export abstract class BaseScraper {
@@ -50,7 +51,7 @@ export abstract class BaseScraper {
           partyId,
         },
       });
-      console.log(`新しい候補者を作成: ${name} ({this.partyName})`);
+      console.log(`新しい候補者を作成: ${name} (${this.partyName})`);
     }
     return candidate;
   }
@@ -63,17 +64,36 @@ export abstract class BaseScraper {
         party.id,
       );
 
-      // 重複チェック
+      // 重複チェック (候補者と日時のみで判定)
       const existing = await prisma.speech.findFirst({
         where: {
           candidateId: candidate.id,
           startAt: data.start_at,
-          locationName: data.location_name,
         },
       });
 
       if (existing) {
-        return null;
+        // 既存データのspeakersと新しいspeakersをマージ（重複排除）
+        const newSpeakers = Array.from(
+          new Set([...(existing.speakers || []), ...(data.speakers || [])]),
+        );
+
+        // speakersに変更があれば更新
+        if (newSpeakers.length !== existing.speakers.length) {
+          const updated = await prisma.speech.update({
+            where: { id: existing.id },
+            data: {
+              speakers: newSpeakers,
+              updatedAt: new Date(),
+            },
+          });
+          console.log(
+            `演説データを更新 (弁士追加): ${data.candidate_name} - ${data.location_name} (弁士: ${newSpeakers.join(", ")})`,
+          );
+          return updated;
+        }
+
+        return existing;
       }
 
       // ジオコーディング
@@ -88,11 +108,12 @@ export abstract class BaseScraper {
           lat: location?.lat,
           lng: location?.lng,
           address: location?.address,
+          speakers: data.speakers || [], // 配列として保存
         },
       });
 
       console.log(
-        `演説データを保存: ${data.candidate_name} - ${data.location_name}`,
+        `演説データを保存: ${data.candidate_name} - ${data.location_name} (弁士: ${(data.speakers || []).join(", ")})`,
       );
       return speech;
     } catch (error) {

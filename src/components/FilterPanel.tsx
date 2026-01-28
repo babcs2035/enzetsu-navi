@@ -37,17 +37,17 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
 
   return (
     <Box
-      bg="whiteAlpha.50"
+      bg="whiteAlpha.900"
       backdropFilter="blur(12px)"
       border="1px solid"
-      borderColor="whiteAlpha.100"
+      borderColor="gray.200"
       borderRadius="2xl"
       p={4}
       w="72"
-      boxShadow="xl"
+      boxShadow="lg"
     >
       <Flex align="center" justify="space-between" mb={4}>
-        <Heading size="sm" color="white">
+        <Heading size="sm" color="gray.800">
           フィルター
         </Heading>
         <IconButton
@@ -55,8 +55,8 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
           onClick={onClose}
           variant="ghost"
           size="sm"
-          color="whiteAlpha.800"
-          _hover={{ bg: "whiteAlpha.100" }}
+          color="gray.600"
+          _hover={{ bg: "gray.100" }}
         >
           <X size={16} />
         </IconButton>
@@ -65,14 +65,14 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
       {/* 政党フィルター */}
       <Box mb={4}>
         <Flex align="center" justify="space-between" mb={2}>
-          <Text fontSize="sm" color="whiteAlpha.600">
+          <Text fontSize="sm" color="gray.500">
             政党
           </Text>
           <Flex gap={2}>
             <Button
               variant="plain"
               size="xs"
-              color="purple.400"
+              color="blue.500"
               onClick={selectAllParties}
               _hover={{ textDecoration: "underline" }}
             >
@@ -81,7 +81,7 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
             <Button
               variant="plain"
               size="xs"
-              color="whiteAlpha.400"
+              color="gray.400"
               onClick={deselectAllParties}
               _hover={{ textDecoration: "underline" }}
             >
@@ -104,9 +104,12 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
                 gap={3}
                 p={2}
                 borderRadius="lg"
-                bg={isSelected ? "whiteAlpha.100" : "whiteAlpha.50"}
-                opacity={isSelected ? 1 : 0.5}
-                _hover={{ bg: "whiteAlpha.150" }}
+                bg={isSelected ? "blue.50" : "whiteAlpha.600"}
+                borderWidth="1px"
+                borderColor={isSelected ? "blue.200" : "transparent"}
+                opacity={isSelected ? 1 : 0.8}
+                _hover={{ bg: isSelected ? "blue.100" : "blackAlpha.50" }}
+                cursor="pointer"
                 transition="all 0.2s"
                 w="full"
               >
@@ -117,10 +120,10 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
                   flexShrink={0}
                   bg={party.color}
                 />
-                <Text fontSize="sm" color="white" flex={1} textAlign="left">
+                <Text fontSize="sm" color="gray.700" flex={1} textAlign="left">
                   {party.name}
                 </Text>
-                {isSelected && <Check size={16} color="#a78bfa" />}
+                {isSelected && <Check size={16} color="#3b82f6" />}
               </Flex>
             );
           })}
@@ -128,22 +131,22 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
       </Box>
 
       {/* 表示オプション */}
-      <Box borderTop="1px solid" borderColor="whiteAlpha.100" pt={4}>
+      <Box borderTop="1px solid" borderColor="gray.100" pt={4}>
         <Checkbox.Root
           checked={filter.showWithLocationOnly}
           onCheckedChange={e =>
             setFilter({ showWithLocationOnly: !!e.checked })
           }
-          colorPalette="purple"
+          colorPalette="blue"
           display="flex"
           alignItems="center"
           gap={2}
         >
           <Checkbox.HiddenInput />
           <Checkbox.Control
-            bg="whiteAlpha.100"
-            borderColor="whiteAlpha.200"
-            _checked={{ bg: "purple.500", borderColor: "purple.500" }}
+            bg="white"
+            borderColor="gray.300"
+            _checked={{ bg: "blue.500", borderColor: "blue.500" }}
             borderRadius="sm"
             width={4}
             height={4}
@@ -156,7 +159,7 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
             </Checkbox.Indicator>
           </Checkbox.Control>
           <Checkbox.Label>
-            <Text fontSize="sm" color="whiteAlpha.800">
+            <Text fontSize="sm" color="gray.600">
               座標のあるデータのみ表示
             </Text>
           </Checkbox.Label>
@@ -170,8 +173,8 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
         size="sm"
         w="full"
         mt={4}
-        color="whiteAlpha.600"
-        _hover={{ color: "whiteAlpha.800" }}
+        color="gray.500"
+        _hover={{ color: "gray.700" }}
       >
         フィルターをリセット
       </Button>

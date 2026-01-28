@@ -36,6 +36,7 @@ export interface Speech {
   party_id: number;
   party_name: string;
   party_color: string;
+  speakers: string[];
   created_at: string;
   updated_at: string;
 }

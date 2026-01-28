@@ -4,14 +4,12 @@ import type { BaseScraper } from "@/lib/server/scraper/base";
 import { LDPScraper } from "@/lib/server/scraper/parties/ldp";
 
 const SCRAPERS: Record<string, new () => BaseScraper> = {
-  自由民主党: LDPScraper,
   LDP: LDPScraper,
 };
 
 export async function scrapeAll() {
   const results = [];
   // 全スクレイパー実行
-  // 現状はLDPのみ
   const scrapers = [new LDPScraper()];
 
   for (const scraper of scrapers) {
