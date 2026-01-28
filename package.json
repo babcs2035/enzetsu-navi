@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.28.1",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "biome check --write src",
     "format": "biome format --write src",
@@ -13,6 +13,9 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "playwright install chromium",
     "prepare": "husky"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.17.0",

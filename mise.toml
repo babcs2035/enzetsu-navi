@@ -4,7 +4,7 @@ pnpm = "10.28.1"
 
 [tasks]
 # --- Setup ---
-setup = { description = "依存関係のインストール、DB起動、スキーマ適用", depends = ["db:up"], run = "pnpm install && pnpm prisma db push && pnpm prisma generate" }
+setup = { description = "依存関係のインストール、DB起動、スキーマ適用、シード実行", depends = ["db:up"], run = "pnpm install && pnpm prisma db push && pnpm prisma generate && pnpm prisma db seed" }
 
 # --- Development ---
 dev = { description = "開発サーバー起動 (DB起動 + Next.js)", depends = ["db:up"], run = "pnpm dev" }

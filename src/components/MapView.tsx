@@ -63,52 +63,71 @@ export function MapView() {
     [setActiveSpeechId],
   );
 
+  const isProgrammaticClose = useRef(false);
+
   // ポップアップを表示
-  const showPopup = useCallback((speech: Speech) => {
-    if (!speech.lat || !speech.lng || !map.current) return;
+  const showPopup = useCallback(
+    (speech: Speech) => {
+      if (!speech.lat || !speech.lng || !map.current) return;
 
-    // 既存のポップアップを閉じる
-    if (popupRef.current) {
-      popupRef.current.remove();
-    }
+      // 既存のポップアップを閉じる（プログラム的なのでイベント発火させない、あるいはフラグ立て）
+      if (popupRef.current) {
+        isProgrammaticClose.current = true;
+        popupRef.current.remove();
+        isProgrammaticClose.current = false;
+      }
 
-    const startTime = new Date(speech.start_at);
-    const timeStr = startTime.toLocaleString("ja-JP", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+      const startTime = new Date(speech.start_at);
+      const timeStr = startTime.toLocaleString("ja-JP", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 
-    const popupContent = `
+      // スタイル調整: bgを純白からわずかにオフホワイトへ、テキスト色を調整
+      const popupContent = `
       <div style="min-width: 200px;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
           <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${speech.party_color};"></div>
-          <span style="font-size: 12px; color: rgba(255,255,255,0.6);">${speech.party_name}</span>
+          <span style="font-size: 12px; color: #64748b; font-weight: 500;">${speech.party_name}</span>
         </div>
-        <h3 style="font-weight: bold; color: white; margin-bottom: 4px;">${speech.candidate_name}</h3>
-        <p style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 8px;">${speech.location_name}</p>
-        <p style="font-size: 12px; color: rgba(255,255,255,0.5);">${timeStr}</p>
-        ${speech.source_url ? `<a href="${speech.source_url}" target="_blank" rel="noopener noreferrer" style="font-size: 12px; color: #a78bfa; margin-top: 8px; display: inline-block;">詳細を見る →</a>` : ""}
+        <h3 style="font-weight: bold; color: #1e293b; margin-bottom: 4px; font-size: 16px;">${speech.candidate_name}</h3>
+        ${speech.speakers && speech.speakers.length > 0 ? `<div style="font-size: 12px; color: #475569; margin-bottom: 4px; background-color: #f1f5f9; padding: 4px; border-radius: 4px;"><span style="font-weight: bold; color: #64748b;">弁士:</span> ${speech.speakers.join(", ")}</div>` : ""}
+        <p style="font-size: 14px; color: #334155; margin-bottom: 8px;">${speech.location_name}</p>
+        <p style="font-size: 12px; color: #64748b;">${timeStr}</p>
+        ${speech.source_url ? `<a href="${speech.source_url}" target="_blank" rel="noopener noreferrer" style="font-size: 12px; color: #3b82f6; margin-top: 8px; display: inline-block; text-decoration: none; font-weight: 500;">詳細を見る →</a>` : ""}
       </div>
     `;
 
-    popupRef.current = new maplibregl.Popup({
-      closeButton: true,
-      closeOnClick: false,
-      maxWidth: "300px",
-    })
-      .setLngLat([speech.lng, speech.lat])
-      .setHTML(popupContent)
-      .addTo(map.current);
+      const popup = new maplibregl.Popup({
+        closeButton: true,
+        closeOnClick: false,
+        maxWidth: "300px",
+        className: "custom-popup", // CSSでスタイル制御しやすくするため
+      })
+        .setLngLat([speech.lng, speech.lat])
+        .setHTML(popupContent)
+        .addTo(map.current);
 
-    // 地図を移動
-    map.current.flyTo({
-      center: [speech.lng, speech.lat],
-      zoom: 15,
-      duration: 1000,
-    });
-  }, []);
+      // closeイベントハンドリング
+      popup.on("close", () => {
+        if (!isProgrammaticClose.current) {
+          setActiveSpeechId(null);
+        }
+      });
+
+      popupRef.current = popup;
+
+      // 地図を移動
+      map.current.flyTo({
+        center: [speech.lng, speech.lat],
+        zoom: 15,
+        duration: 1000,
+      });
+    },
+    [setActiveSpeechId],
+  );
 
   // 地図の初期化
   useEffect(() => {

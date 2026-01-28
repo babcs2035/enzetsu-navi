@@ -41,6 +41,7 @@ model Speech {
   lat            Float?
   lng            Float?
   sourceUrl      String?  @map("source_url")
+  speakers       String[] @default([])
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

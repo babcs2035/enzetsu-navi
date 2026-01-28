@@ -11,7 +11,7 @@ import {
 } from "@chakra-ui/react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { AlertCircle, Clock, ExternalLink, MapPin } from "lucide-react";
+import { AlertCircle, Clock, ExternalLink, MapPin, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useStore } from "@/store/useStore";
 
@@ -36,8 +36,8 @@ export function SpeechList() {
     return (
       <Flex align="center" justify="center" h="full">
         <VStack gap={3}>
-          <Spinner size="lg" color="purple.500" borderWidth="3px" />
-          <Text color="whiteAlpha.600" fontSize="sm">
+          <Spinner size="lg" color="blue.500" borderWidth="3px" />
+          <Text color="gray.500" fontSize="sm">
             データを読み込み中...
           </Text>
         </VStack>
@@ -51,8 +51,8 @@ export function SpeechList() {
       <Flex align="center" justify="center" h="full" p={4}>
         <VStack gap={3}>
           <AlertCircle size={40} color="#F56565" />
-          <Text color="whiteAlpha.800">エラーが発生しました</Text>
-          <Text color="whiteAlpha.500" fontSize="sm">
+          <Text color="gray.800">エラーが発生しました</Text>
+          <Text color="gray.500" fontSize="sm">
             {error}
           </Text>
         </VStack>
@@ -65,9 +65,9 @@ export function SpeechList() {
     return (
       <Flex align="center" justify="center" h="full" p={4}>
         <VStack gap={3}>
-          <MapPin size={40} color="rgba(255,255,255,0.3)" />
-          <Text color="whiteAlpha.600">この時間帯の演説データはありません</Text>
-          <Text color="whiteAlpha.400" fontSize="sm">
+          <MapPin size={40} color="#CBD5E0" />
+          <Text color="gray.600">この時間帯の演説データはありません</Text>
+          <Text color="gray.400" fontSize="sm">
             時間を変更してみてください
           </Text>
         </VStack>
@@ -79,10 +79,10 @@ export function SpeechList() {
     <Box ref={listRef} h="full" overflowY="auto" p={4}>
       {/* 件数表示 */}
       <Flex align="center" justify="space-between" mb={3}>
-        <Text fontSize="sm" color="whiteAlpha.500">
+        <Text fontSize="sm" color="gray.500">
           {speeches.length}件の演説
         </Text>
-        {isLoading && <Spinner size="sm" color="purple.500" />}
+        {isLoading && <Spinner size="sm" color="blue.500" />}
       </Flex>
 
       {/* 演説カードリスト */}
@@ -101,12 +101,15 @@ export function SpeechList() {
               p={4}
               borderRadius="xl"
               cursor="pointer"
-              bg={isActive ? "whiteAlpha.150" : "whiteAlpha.50"}
-              borderWidth={isActive ? "2px" : "1px"}
-              borderColor={isActive ? "purple.500" : "transparent"}
-              boxShadow={isActive ? "lg" : "none"}
-              _hover={{ bg: "whiteAlpha.100" }}
-              transition="all 0.3s"
+              bg={isActive ? "blue.50" : "whiteAlpha.900"}
+              borderWidth="1px"
+              borderColor={isActive ? "blue.400" : "gray.200"}
+              boxShadow={isActive ? "md" : "sm"}
+              _hover={{
+                borderColor: "blue.300",
+                transform: "translateY(-1px)",
+              }}
+              transition="all 0.2s"
             >
               {/* 政党バッジ */}
               <Flex align="center" gap={2} mb={2}>
@@ -116,37 +119,68 @@ export function SpeechList() {
                   borderRadius="full"
                   bg={speech.party_color}
                 />
-                <Text fontSize="xs" color="whiteAlpha.500">
+                <Text fontSize="xs" color="gray.500" fontWeight="medium">
                   {speech.party_name}
                 </Text>
               </Flex>
 
               {/* 候補者名 */}
-              <Heading size="sm" color="white" mb={2}>
+              <Heading size="sm" color="gray.800" mb={3}>
                 {speech.candidate_name}
               </Heading>
+
+              {/* 弁士情報 (あれば表示) */}
+              {speech.speakers && speech.speakers.length > 0 && (
+                <Flex
+                  align="flex-start"
+                  gap={2}
+                  mb={2}
+                  p={2}
+                  bg="gray.50"
+                  borderRadius="md"
+                >
+                  <Users
+                    size={14}
+                    color="#718096"
+                    style={{ marginTop: 2, flexShrink: 0 }}
+                  />
+                  <Box>
+                    <Text
+                      fontSize="xs"
+                      color="gray.500"
+                      fontWeight="bold"
+                      mb={0.5}
+                    >
+                      応援弁士
+                    </Text>
+                    <Text fontSize="sm" color="gray.700">
+                      {speech.speakers.join(", ")}
+                    </Text>
+                  </Box>
+                </Flex>
+              )}
 
               {/* 場所 */}
               <Flex align="flex-start" gap={2} mb={2}>
                 <MapPin
                   size={16}
-                  color="rgba(255,255,255,0.4)"
+                  color="#718096"
                   style={{ marginTop: 2, flexShrink: 0 }}
                 />
                 <Box>
-                  <Text fontSize="sm" color="whiteAlpha.800">
+                  <Text fontSize="sm" color="gray.700">
                     {speech.location_name}
                   </Text>
                   {speech.address && (
-                    <Text fontSize="xs" color="whiteAlpha.400" mt={0.5}>
+                    <Text fontSize="xs" color="gray.500" mt={0.5}>
                       {speech.address}
                     </Text>
                   )}
                   {!speech.lat && (
-                    <Flex align="center" gap={1} mt={0.5}>
+                    <Flex align="center" gap={1} mt={1}>
                       <AlertCircle size={12} color="#ECC94B" />
-                      <Text fontSize="xs" color="yellow.400">
-                        座標不明
+                      <Text fontSize="xs" color="yellow.600">
+                        座標不明 - 地図に表示されません
                       </Text>
                     </Flex>
                   )}
@@ -154,32 +188,40 @@ export function SpeechList() {
               </Flex>
 
               {/* 時刻 */}
-              <Flex align="center" gap={2} fontSize="xs" color="whiteAlpha.400">
+              <Flex
+                align="center"
+                gap={2}
+                fontSize="xs"
+                color="gray.500"
+                mt={3}
+                pt={2}
+                borderTopWidth="1px"
+                borderColor="gray.100"
+              >
                 <Clock size={14} />
                 <Text>
                   {format(startTime, "M月d日（E） HH:mm", { locale: ja })}
                 </Text>
-              </Flex>
 
-              {/* ソースリンク */}
-              {speech.source_url && (
-                <Link
-                  href={speech.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  display="inline-flex"
-                  alignItems="center"
-                  gap={1}
-                  mt={2}
-                  fontSize="xs"
-                  color="purple.400"
-                  _hover={{ color: "purple.300" }}
-                >
-                  <ExternalLink size={12} />
-                  出典を見る
-                </Link>
-              )}
+                {/* ソースリンク (右寄せ) */}
+                {speech.source_url && (
+                  <Link
+                    href={speech.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    display="inline-flex"
+                    alignItems="center"
+                    gap={1}
+                    ml="auto"
+                    color="blue.500"
+                    _hover={{ color: "blue.600", textDecoration: "underline" }}
+                  >
+                    <ExternalLink size={12} />
+                    出典
+                  </Link>
+                )}
+              </Flex>
             </Box>
           );
         })}

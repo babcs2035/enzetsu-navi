@@ -14,6 +14,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm prisma generate
 RUN pnpm build
+RUN npx tsc prisma/seed.ts --module commonjs --target es2020 --moduleResolution node --skipLibCheck --allowSyntheticDefaultImports
 
 FROM base AS runner
 WORKDIR /app
@@ -34,6 +35,7 @@ RUN chown nextjs:nodejs .next
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/prisma/seed.js ./prisma/seed.js
 
 USER nextjs
 
@@ -42,4 +44,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "node prisma/seed.js && node server.js"]

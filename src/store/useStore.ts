@@ -72,7 +72,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setActiveSpeechId: id => set({ activeSpeechId: id }),
 
   setSelectedTime: time => {
-    set({ selectedTime: time });
+    set({ selectedTime: time, activeSpeechId: null });
     get().fetchSpeechesByTime(time);
   },
 
