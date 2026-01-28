@@ -54,7 +54,6 @@ export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
           variant="ghost"
           color="gray.600"
           _hover={{ bg: "gray.100" }}
-          display={{ base: "flex", lg: "none" }}
         >
           <Filter size={20} />
         </IconButton>

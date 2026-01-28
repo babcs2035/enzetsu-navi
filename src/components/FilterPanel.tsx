@@ -130,6 +130,49 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
         </VStack>
       </Box>
 
+      {/* 期間フィルター */}
+      <Box mb={4}>
+        <Text fontSize="sm" color="gray.500" mb={2}>
+          期間
+        </Text>
+        <VStack align="stretch" gap={2}>
+          {(["today", "upcoming", "all"] as const).map(mode => {
+            const isSelected = filter.dateMode === mode;
+            let label = "";
+            switch (mode) {
+              case "today":
+                label = "本日の演説";
+                break;
+              case "upcoming":
+                label = "これから実施される演説";
+                break;
+              case "all":
+                label = "すべての演説（過去含む）";
+                break;
+            }
+
+            return (
+              <Button
+                key={mode}
+                onClick={() => setFilter({ dateMode: mode })}
+                variant={isSelected ? "solid" : "outline"}
+                colorScheme="blue"
+                size="sm"
+                justifyContent="flex-start"
+                bg={isSelected ? "blue.500" : "transparent"}
+                color={isSelected ? "white" : "gray.700"}
+                borderColor={isSelected ? "blue.500" : "gray.200"}
+                _hover={{
+                  bg: isSelected ? "blue.600" : "gray.50",
+                }}
+              >
+                {label}
+              </Button>
+            );
+          })}
+        </VStack>
+      </Box>
+
       {/* 表示オプション */}
       <Box borderTop="1px solid" borderColor="gray.100" pt={4}>
         <Checkbox.Root

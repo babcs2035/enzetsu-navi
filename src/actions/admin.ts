@@ -1,16 +1,20 @@
 "use server";
 
 import type { BaseScraper } from "@/lib/server/scraper/base";
+import { IshinScraper } from "@/lib/server/scraper/parties/ishin";
 import { LDPScraper } from "@/lib/server/scraper/parties/ldp";
 
 const SCRAPERS: Record<string, new () => BaseScraper> = {
   LDP: LDPScraper,
+  Ishin: IshinScraper,
 };
 
 export async function scrapeAll() {
   const results = [];
   // 全スクレイパー実行
-  const scrapers = [new LDPScraper()];
+  const scrapers = Object.values(SCRAPERS).map(
+    ScraperClass => new ScraperClass(),
+  );
 
   for (const scraper of scrapers) {
     try {

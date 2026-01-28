@@ -8,6 +8,7 @@ export interface SpeechData {
   location_name: string;
   source_url?: string;
   speakers?: string[];
+  address?: string; // 住所が分かる場合は設定
 }
 
 export abstract class BaseScraper {
@@ -97,7 +98,8 @@ export abstract class BaseScraper {
       }
 
       // ジオコーディング
-      const location = await geocodeLocation(data.location_name);
+      const searchAddr = data.address || data.location_name;
+      const location = await geocodeLocation(searchAddr);
 
       const speech = await prisma.speech.create({
         data: {
@@ -107,7 +109,7 @@ export abstract class BaseScraper {
           sourceUrl: data.source_url,
           lat: location?.lat,
           lng: location?.lng,
-          address: location?.address,
+          address: location?.address || data.address, // API結果優先、なければスクレイピング結果
           speakers: data.speakers || [], // 配列として保存
         },
       });

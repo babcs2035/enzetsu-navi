@@ -45,6 +45,7 @@ ENV HOME=/app
 ENV XDG_CACHE_HOME=/app/.cache
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV TZ="Asia/Tokyo"
 
 # Install system dependencies for Playwright first (cached unless base changes)
 # Using npx/pnpm dlx here might be slow, so installing playwright locally to run install-deps is option, 

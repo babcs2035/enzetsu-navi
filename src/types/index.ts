@@ -51,8 +51,12 @@ export interface Stats {
   last_updated: string | null;
 }
 
+// フィルターモード
+export type DateMode = "today" | "upcoming" | "all";
+
 // フィルター状態
 export interface FilterState {
+  dateMode: DateMode;
   selectedPartyIds: number[];
   selectedCandidateIds: number[];
   showWithLocationOnly: boolean;

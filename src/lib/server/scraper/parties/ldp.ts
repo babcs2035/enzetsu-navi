@@ -37,8 +37,8 @@ export class LDPScraper extends BaseScraper {
               rts.forEach(rt => {
                 rt.remove();
               });
-              // 全角スペース等を半角に置換してトリム
-              return (clone.textContent || "").replace(/\s+/g, " ").trim();
+              // 全角スペース等も全て削除
+              return (clone.textContent || "").replace(/\s/g, "");
             });
           }
 
@@ -72,7 +72,7 @@ export class LDPScraper extends BaseScraper {
                   return text
                     .replace(/【.*?】/g, "")
                     .replace(/[（(].*?[）)]/g, "") // 全角・半角括弧に対応
-                    .trim();
+                    .replace(/\s/g, ""); // すべての空白を削除
                 };
 
                 for (const p of infoParams) {
