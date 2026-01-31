@@ -2,11 +2,13 @@
 
 import type { BaseScraper } from "@/lib/server/scraper/base";
 import { IshinScraper } from "@/lib/server/scraper/parties/ishin";
+import { KokuminScraper } from "@/lib/server/scraper/parties/kokumin";
 import { LDPScraper } from "@/lib/server/scraper/parties/ldp";
 
 const SCRAPERS: Record<string, new () => BaseScraper> = {
   LDP: LDPScraper,
   Ishin: IshinScraper,
+  Kokumin: KokuminScraper,
 };
 
 export async function scrapeAll() {

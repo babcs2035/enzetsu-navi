@@ -17,10 +17,9 @@ build = { description = "プロダクションビルド", depends = ["db:up"], r
 # --- Database (Prisma) ---
 "db:up" = { description = "DBコンテナ起動 (待機あり)", run = "docker compose up -d db --wait" }
 "db:down" = { description = "DBコンテナ停止", run = "docker compose stop db" }
-"db:reset" = { description = "DBリセット (全データ削除)", run = "docker compose down -v && docker compose up -d db" }
 "db:studio" = { description = "Prisma Studio (管理GUI) 起動", run = "pnpm prisma studio" }
-"db:push" = { description = "DBスキーマ適用", run = "pnpm prisma db push" }
 "db:generate" = { description = "Prisma Client 生成", run = "pnpm prisma generate" }
+"db:reset" = { description = "DB リセット（全データ削除 & シード）", run = "pnpm prisma db push --force-reset && pnpm prisma db seed" }
 
 # --- Docker ---
 docker = { description = "フルスタック起動 (App + DB)", run = "docker compose up -d" }
@@ -29,3 +28,4 @@ docker = { description = "フルスタック起動 (App + DB)", run = "docker co
 
 # --- Utility ---
 clean = { description = "一時ファイル削除", run = "rm -rf node_modules .next" }
+scrape = { description = "手動スクレイピング実行 (引数なしで全件，または政党名指定)", run = "pnpm tsx scripts/scrape.ts" }
