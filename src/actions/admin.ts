@@ -5,12 +5,14 @@ import { IshinScraper } from "@/lib/server/scraper/parties/ishin";
 import { JCPScraper } from "@/lib/server/scraper/parties/jcp";
 import { KokuminScraper } from "@/lib/server/scraper/parties/kokumin";
 import { LDPScraper } from "@/lib/server/scraper/parties/ldp";
+import { TeamMiraiScraper } from "@/lib/server/scraper/parties/team_mirai";
 
 const SCRAPERS: Record<string, new () => BaseScraper> = {
   LDP: LDPScraper,
   Ishin: IshinScraper,
   Kokumin: KokuminScraper,
   JCP: JCPScraper,
+  TeamMirai: TeamMiraiScraper,
 };
 
 export async function scrapeAll() {
