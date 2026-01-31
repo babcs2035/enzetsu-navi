@@ -37,8 +37,8 @@ export class LDPScraper extends BaseScraper {
               rts.forEach(rt => {
                 rt.remove();
               });
-              // 全角スペース等も全て削除する．
-              return (clone.textContent || "").replace(/\s/g, "");
+              // 全角スペース等も全て削除せず、半角スペースに正規化して残す
+              return (clone.textContent || "").trim().replace(/\s+/g, " ");
             });
           }
 

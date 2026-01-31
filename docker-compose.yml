@@ -11,6 +11,7 @@ services:
       DATABASE_URL: postgresql://enzetsu:enzetsu_password@db:5432/enzetsu_navi
       GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY}
       TZ: Asia/Tokyo
+      APP_PORT: ${APP_PORT:-3000}
     depends_on:
       db:
         condition: service_healthy
@@ -24,6 +25,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-enzetsu}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-enzetsu_password}
       POSTGRES_DB: ${POSTGRES_DB:-enzetsu_navi}
+      DB_PORT: ${DB_PORT:-5432}
       TZ: Asia/Tokyo
     volumes:
       - postgres_data:/var/lib/postgresql/data

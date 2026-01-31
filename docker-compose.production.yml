@@ -10,6 +10,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-enzetsu}:${POSTGRES_PASSWORD:-enzetsu_password}@db:5432/${POSTGRES_DB:-enzetsu_navi}
       TZ: Asia/Tokyo
+      APP_PORT: ${APP_PORT:-3000}
     depends_on:
       db: 
         condition: service_healthy
@@ -24,6 +25,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-enzetsu_password}
       POSTGRES_DB: ${POSTGRES_DB:-enzetsu_navi}
       TZ: Asia/Tokyo
+      DB_PORT: ${DB_PORT:-5432}
     ports:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
