@@ -31,6 +31,7 @@ COPY . .
 RUN pnpm prisma generate
 # Compile seed script separately
 RUN pnpm tsc prisma/seed.ts --module commonjs --target es2020 --moduleResolution node --skipLibCheck --allowSyntheticDefaultImports
+RUN pnpm tsc prisma/cleanup-db.ts --module commonjs --target es2020 --moduleResolution node --skipLibCheck --allowSyntheticDefaultImports
 RUN pnpm build
 
 # -----------------------------------------------------------------------------
@@ -73,6 +74,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy Prisma files needed for seeding and schema ops
 # Note: standalone build does not include prisma directory
 COPY --from=builder --chown=nextjs:nodejs /app/prisma/seed.js ./prisma/seed.js
+COPY --from=builder --chown=nextjs:nodejs /app/prisma/cleanup-db.js ./prisma/cleanup-db.js
 COPY --from=builder --chown=nextjs:nodejs /app/prisma/schema.prisma ./prisma/schema.prisma
 COPY --from=deps --chown=nextjs:nodejs /app/package.json ./package.json
 

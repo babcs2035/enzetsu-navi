@@ -97,7 +97,12 @@ export function SearchBox() {
   };
 
   return (
-    <Box position="relative" w="full" maxW="400px" ref={containerRef}>
+    <Box
+      position="relative"
+      w="full"
+      maxW={{ base: "100%", md: "400px" }}
+      ref={containerRef}
+    >
       <Box position="relative">
         <Box
           position="absolute"

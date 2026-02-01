@@ -46,6 +46,7 @@ export function MapView() {
   const markersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const isProgrammaticClose = useRef(false);
+  const prevSpeechIdsRef = useRef<string>("");
 
   const { speeches, activeSpeechId, setActiveSpeechId, filter, selectedTime } =
     useStore();
@@ -55,7 +56,9 @@ export function MapView() {
    */
   const createMarker = useCallback(
     (speech: Speech): maplibregl.Marker | null => {
-      if (!speech.lat || !speech.lng || !map.current) return null;
+      // ローカル変数に確保して型ガードを有効にする
+      const currentMap = map.current;
+      if (!speech.lat || !speech.lng || !currentMap) return null;
 
       let opacity = 1;
       let scale = 1;
@@ -92,7 +95,7 @@ export function MapView() {
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([speech.lng, speech.lat])
-        .addTo(map.current);
+        .addTo(currentMap);
 
       return marker;
     },
@@ -104,7 +107,9 @@ export function MapView() {
    */
   const showPopup = useCallback(
     (speech: Speech) => {
-      if (!speech.lat || !speech.lng || !map.current) return;
+      // ローカル変数に確保して型ガードを有効にする
+      const currentMap = map.current;
+      if (!speech.lat || !speech.lng || !currentMap) return;
 
       if (popupRef.current) {
         isProgrammaticClose.current = true;
@@ -190,7 +195,7 @@ export function MapView() {
       })
         .setLngLat([speech.lng, speech.lat])
         .setHTML(popupContent)
-        .addTo(map.current);
+        .addTo(currentMap);
 
       popup.on("close", () => {
         if (!isProgrammaticClose.current) {
@@ -204,7 +209,7 @@ export function MapView() {
       const rightPadding = isMobile ? 0 : 350;
       const bottomPadding = isMobile ? 150 : 0; // モバイルはポップアップ用に下部を空ける
 
-      map.current.flyTo({
+      currentMap.flyTo({
         center: [speech.lng, speech.lat],
         zoom: 15,
         padding: {
@@ -316,10 +321,10 @@ export function MapView() {
         border-top-color: #ffffff;
       }
       .party-marker {
-        width: 20px;
-        height: 20px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
-        border: 3px solid white;
+        border: 2px solid white;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
         cursor: pointer;
         transition: border-color 0.2s, box-shadow 0.2s, opacity 0.3s;
@@ -352,6 +357,12 @@ export function MapView() {
    */
   useEffect(() => {
     if (!map.current) return;
+
+    const currentSpeechIds = speeches
+      .map(s => s.id)
+      .sort((a, b) => a - b)
+      .join(",");
+    const isDataChanged = currentSpeechIds !== prevSpeechIdsRef.current;
 
     // 既存の全マーカーを地図から削除してクリアする
     markersRef.current.forEach(marker => {
@@ -410,6 +421,7 @@ export function MapView() {
       }
 
       if (isSingleCandidate || isCommonSpeaker) {
+        // ... (route drawing logic)
         const sortedSpeeches = [...speeches].sort(
           (a, b) =>
             new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
@@ -430,53 +442,57 @@ export function MapView() {
           shouldFitBounds = true;
 
           try {
-            map.current.addSource(sourceId, {
-              type: "geojson",
-              data: {
-                type: "Feature",
-                properties: {},
-                geometry: {
-                  type: "LineString",
-                  coordinates: routeCoordinates,
-                },
-              },
-            });
-
-            map.current.addLayer({
-              id: lineLayerId,
-              type: "line",
-              source: sourceId,
-              layout: {
-                "line-join": "round",
-                "line-cap": "round",
-              },
-              paint: {
-                "line-color": partyColor,
-                "line-width": 5,
-                "line-opacity": 0.8,
-              },
-            });
-
-            if (map.current.hasImage("arrow-icon")) {
-              map.current.addLayer({
-                id: arrowLayerId,
-                type: "symbol",
-                source: sourceId,
-                layout: {
-                  "symbol-placement": "line",
-                  "symbol-spacing": 100,
-                  "icon-image": "arrow-icon",
-                  "icon-size": 0.6,
-                  "icon-allow-overlap": true,
-                  "icon-rotate": 90,
-                  "icon-rotation-alignment": "map",
-                },
-                paint: {
-                  "icon-color": partyColor,
-                  "icon-halo-color": "#ffffff",
-                  "icon-halo-width": 2,
+            // ... (addSource and addLayer logic)
+            // Ensure map.current exists
+            if (map.current) {
+              map.current.addSource(sourceId, {
+                type: "geojson",
+                data: {
+                  type: "Feature",
+                  properties: {},
+                  geometry: {
+                    type: "LineString",
+                    coordinates: routeCoordinates,
+                  },
                 },
               });
+
+              map.current.addLayer({
+                id: lineLayerId,
+                type: "line",
+                source: sourceId,
+                layout: {
+                  "line-join": "round",
+                  "line-cap": "round",
+                },
+                paint: {
+                  "line-color": partyColor,
+                  "line-width": 5,
+                  "line-opacity": 0.8,
+                },
+              });
+
+              if (map.current.hasImage("arrow-icon")) {
+                map.current.addLayer({
+                  id: arrowLayerId,
+                  type: "symbol",
+                  source: sourceId,
+                  layout: {
+                    "symbol-placement": "line",
+                    "symbol-spacing": 100,
+                    "icon-image": "arrow-icon",
+                    "icon-size": 0.6,
+                    "icon-allow-overlap": true,
+                    "icon-rotate": 90,
+                    "icon-rotation-alignment": "map",
+                  },
+                  paint: {
+                    "icon-color": partyColor,
+                    "icon-halo-color": "#ffffff",
+                    "icon-halo-width": 2,
+                  },
+                });
+              }
             }
           } catch (e) {
             console.error("❌ Failed to add route layer:", e);
@@ -487,7 +503,13 @@ export function MapView() {
     }
 
     // 必要に応じて表示範囲全体のズーム調整を行う（Fit Bounds）
-    if (shouldFitBounds && boundsCoordinates.length > 0) {
+    // データが変更された場合のみ実行する
+    if (
+      isDataChanged &&
+      shouldFitBounds &&
+      boundsCoordinates.length > 0 &&
+      map.current
+    ) {
       const bounds = new maplibregl.LngLatBounds();
       boundsCoordinates.forEach(coord => {
         bounds.extend(coord);
@@ -506,7 +528,12 @@ export function MapView() {
         duration: 1200,
       });
     }
-  }, [speeches, createMarker, filter.searchQuery]);
+
+    // データ変更状態を更新
+    if (isDataChanged) {
+      prevSpeechIdsRef.current = currentSpeechIds;
+    }
+  }, [speeches, filter.searchQuery, createMarker]);
 
   /**
    * ストア上のアクティブな演説 ID が変更された際，マーカーの強調および詳細ポップアップ表示を行う．

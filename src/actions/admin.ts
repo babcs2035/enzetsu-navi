@@ -71,8 +71,10 @@ export async function scrapeParty(partyName: string) {
   );
 }
 
-import { exec } from "child_process";
-import { promisify } from "util";
+import { exec } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { promisify } from "node:util";
 
 const execAsync = promisify(exec);
 
@@ -82,12 +84,15 @@ const execAsync = promisify(exec);
 async function runCleanup() {
   console.log("🧹 Running DB cleanup...");
   try {
-    const { stdout, stderr } = await execAsync(
-      "pnpx tsx prisma/cleanup-db.ts",
-      {
-        cwd: process.cwd(),
-      },
-    );
+    const jsPath = join(process.cwd(), "prisma/cleanup-db.js");
+    let command = "pnpx tsx prisma/cleanup-db.ts";
+    if (existsSync(jsPath)) {
+      command = "node prisma/cleanup-db.js";
+    }
+
+    const { stdout, stderr } = await execAsync(command, {
+      cwd: process.cwd(),
+    });
     if (stdout) console.log(stdout);
     if (stderr) console.error(stderr);
   } catch (error) {

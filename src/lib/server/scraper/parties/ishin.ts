@@ -110,10 +110,18 @@ export class IshinScraper extends BaseScraper {
 
                   // 候補者（p 要素）の抽出
                   tdSpieler.querySelectorAll("p").forEach(p => {
-                    let text = p.textContent?.trim() || "";
-                    if (text.includes("弁士")) {
-                      text = text.replace(/^.*弁士[:：]/, "").trim();
-                      const match = text.match(/(?:候補者|支部長)\s+([^\s]+)/);
+                    // innerText で取得して改行で分割する
+                    const innerText = (p as HTMLElement).innerText || "";
+                    const lines = innerText.split("\n");
+
+                    for (let line of lines) {
+                      line = line.trim();
+                      // "弁士:" などのプレフィックスがあれば削除
+                      line = line.replace(/^.*弁士[:：]/, "").trim();
+
+                      // "候補者" または "支部長" の後ろにある文字列を取得
+                      // スペースがあってもなくてもマッチするように \s* とする
+                      const match = line.match(/(?:候補者|支部長)\s*([^\s]+)/);
                       if (match) {
                         const name = match[1].replace(/他$/, "").trim();
                         if (name && name !== "他") {
