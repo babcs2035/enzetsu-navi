@@ -4,9 +4,9 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "街頭演説ナビ - 演説場所をリアルタイムで確認",
+  title: "街頭演説ナビ",
   description:
-    "日本の国政選挙における街頭演説の場所をリアルタイムで地図上に可視化。政党・候補者ごとの演説スケジュールを確認できます。",
+    "日本の国政選挙における街頭演説の場所をリアルタイムで地図上に可視化．政党・候補者ごとの演説スケジュールを確認できます．",
   keywords: [
     "街頭演説",
     "選挙",
@@ -19,9 +19,18 @@ export const metadata: Metadata = {
   authors: [{ name: "街頭演説ナビ" }],
   openGraph: {
     title: "街頭演説ナビ",
-    description: "街頭演説の場所をリアルタイムで確認",
+    description:
+      "日本の国政選挙における街頭演説の場所をリアルタイムで地図上に可視化．政党・候補者ごとの演説スケジュールを確認できます．",
     type: "website",
     locale: "ja_JP",
+    images: ["/enzetsu-navi/ogp.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "街頭演説ナビ",
+    description:
+      "日本の国政選挙における街頭演説の場所をリアルタイムで地図上に可視化．政党・候補者ごとの演説スケジュールを確認できます．",
+    images: ["/enzetsu-navi/ogp.png"],
   },
   icons: {
     icon: "/enzetsu-navi/favicon.svg",

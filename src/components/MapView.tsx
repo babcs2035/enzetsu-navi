@@ -17,7 +17,9 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
   sources: {
     osm: {
       type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: [
+        "https://tile.openstreetmap.jp/styles/maptiler-basic-ja/{z}/{x}/{y}.png",
+      ],
       tileSize: 256,
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -198,9 +200,19 @@ export function MapView() {
 
       popupRef.current = popup;
 
+      const isMobile = window.matchMedia("(max-width: 991px)").matches;
+      const rightPadding = isMobile ? 0 : 350;
+      const bottomPadding = isMobile ? 150 : 0; // モバイルはポップアップ用に下部を空ける
+
       map.current.flyTo({
         center: [speech.lng, speech.lat],
         zoom: 15,
+        padding: {
+          right: rightPadding,
+          bottom: bottomPadding,
+          top: 0,
+          left: 0,
+        },
         duration: 1000,
       });
     },
@@ -481,8 +493,15 @@ export function MapView() {
         bounds.extend(coord);
       });
 
+      // モバイル（992px 未満）かデスクトップかで右側の Padding を切り替える
+      const isMobile = window.matchMedia("(max-width: 991px)").matches;
+      const rightPadding = isMobile ? 50 : 350;
+
+      // 地図サイズが変更されている可能性があるため強制的にリサイズを反映
+      map.current.resize();
+
       map.current.fitBounds(bounds, {
-        padding: { top: 100, bottom: 200, left: 50, right: 350 },
+        padding: { top: 100, bottom: 200, left: 50, right: rightPadding },
         maxZoom: 16,
         duration: 1200,
       });
@@ -502,6 +521,9 @@ export function MapView() {
       const speech = speeches.find(s => s.id === activeSpeechId);
       if (speech) {
         showPopup(speech);
+
+        // モバイルかつポップアップ表示時は中心を少し上にずらすなどの調整が必要になる可能性があるが
+        // まずは fitBounds の Padding 修正で全体の挙動を確認する
       } else {
         if (popupRef.current) {
           isProgrammaticClose.current = true;
