@@ -217,3 +217,53 @@ export async function getStats() {
     }),
   );
 }
+
+/**
+ * 検索サジェスト用の候補者名および弁士名のユニークなリストを取得する．
+ * フィルター状態に関わらず全件から抽出する．
+ *
+ * @returns 候補者・弁士名の配列（{ name: string, type: 'candidate' | 'speaker' }[]）
+ */
+export async function getSearchSuggestions() {
+  const speeches = await prisma.speech.findMany({
+    select: {
+      speakers: true,
+      candidate: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  const candidates = new Set<string>();
+  const speakers = new Set<string>();
+
+  for (const s of speeches) {
+    if (s.candidate?.name) {
+      candidates.add(s.candidate.name);
+    }
+    if (s.speakers && Array.isArray(s.speakers)) {
+      for (const speaker of s.speakers) {
+        if (typeof speaker === "string" && speaker.trim()) {
+          speakers.add(speaker.trim());
+        }
+      }
+    }
+  }
+
+  const result: { name: string; type: "candidate" | "speaker" }[] = [];
+
+  for (const name of candidates) {
+    result.push({ name, type: "candidate" });
+  }
+
+  for (const name of speakers) {
+    // 候補者としても存在する場合は候補者優先
+    if (!candidates.has(name)) {
+      result.push({ name, type: "speaker" });
+    }
+  }
+
+  return result.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+}

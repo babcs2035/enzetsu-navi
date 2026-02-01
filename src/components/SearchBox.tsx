@@ -5,17 +5,12 @@ import { Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/store/useStore";
 
-interface Suggestion {
-  type: "candidate" | "speaker";
-  name: string;
-}
-
 /**
  * 検索ボックスコンポーネント．
  * 候補者名や応援弁士名によるフィルタリング，および入力候補の提示（サジェスト）を行う．
  */
 export function SearchBox() {
-  const { rawSpeeches, filter, setFilter } = useStore();
+  const { searchSuggestions, filter, setFilter } = useStore();
   const [inputValue, setInputValue] = useState(filter.searchQuery);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -27,49 +22,19 @@ export function SearchBox() {
   }, [filter.searchQuery]);
 
   /**
-   * 収集済みの演説データから，重複を除いた候補者および弁士のリストを抽出し，サジェスト母体を生成する．
-   */
-  const suggestions = useMemo(() => {
-    const candidates = new Set<string>();
-    const speakers = new Set<string>();
-
-    rawSpeeches.forEach(speech => {
-      if (speech.candidate_name) candidates.add(speech.candidate_name);
-      if (speech.speakers) {
-        speech.speakers.forEach(speaker => {
-          speakers.add(speaker);
-        });
-      }
-    });
-
-    const list: Suggestion[] = [];
-    candidates.forEach(name => {
-      list.push({ type: "candidate", name });
-    });
-    speakers.forEach(name => {
-      list.push({ type: "speaker", name });
-    });
-
-    // キー重複（候補者かつ弁士など）を排除し，五十音順等にソートする
-    const uniqueList = Array.from(
-      new Map(list.map(item => [item.name, item])).values(),
-    );
-    return uniqueList.sort((a, b) => a.name.localeCompare(b.name, "ja"));
-  }, [rawSpeeches]);
-
-  /**
    * 現在の入力内容に基づきサジェストリストをフィルタリングする．
    */
   const filteredSuggestions = useMemo(() => {
     if (!inputValue) return [];
     const lowerInput = inputValue.toLowerCase();
     // 完全一致する項目が既に存在する場合はサジェストを表示しない
-    if (suggestions.some(s => s.name.toLowerCase() === lowerInput)) return [];
+    if (searchSuggestions.some(s => s.name.toLowerCase() === lowerInput))
+      return [];
 
-    return suggestions
+    return searchSuggestions
       .filter(s => s.name.toLowerCase().includes(lowerInput))
       .slice(0, 10);
-  }, [inputValue, suggestions]);
+  }, [inputValue, searchSuggestions]);
 
   /**
    * コンポーネント外クリックを検知してサジェストを閉じるためのイベント登録．

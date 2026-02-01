@@ -178,7 +178,15 @@ export class KokuminScraper extends BaseScraper {
     ];
 
     for (const line of lines) {
-      const text = line.replace(/^[・\s　]+/, "").trim();
+      // 行全体から，時刻情報や注釈を含む括弧（およびその中身）を事前に削除する
+      const text = line
+        .replace(
+          /[（(][^）)]*?(\d{1,2}[:：]\d{2}|参加予定|※|注|から)[^）)]*?[）)]/g,
+          "",
+        )
+        .replace(/^[・\s　]+/, "")
+        .trim();
+
       if (
         !text ||
         text.startsWith("日時") ||
@@ -187,10 +195,12 @@ export class KokuminScraper extends BaseScraper {
       )
         continue;
 
-      const tokens = text.split(/[\s　]+/).filter(t => t);
+      // スペースだけでなく、読点（、）でも分割する
+      const tokens = text.split(/[\s　、,]+/).filter(t => t);
       let currentName = "";
 
       for (const token of tokens) {
+        if (this.isGarbageToken(token)) continue;
         const matchedRole = roles.find(r => token.includes(r));
 
         if (matchedRole) {
@@ -249,10 +259,18 @@ export class KokuminScraper extends BaseScraper {
    * 指定された文字列が不要なトークン（地域名など）か判定する．
    */
   private isGarbageToken(text: string): boolean {
+    if (!text || text.length === 0) return true;
+    if (text.length === 1 && /[ぁ-ん]/.test(text)) return true; // 「ら」などの平仮名1文字
     if (/\d+区/.test(text)) return true;
     if (/^.+[都府県市区町村]$/.test(text) && text.length < 6) return true;
     if (/^【.*】$/.test(text)) return true;
-    if (["候補", "予定", "弁士"].includes(text)) return true;
+    if (["候補", "予定", "弁士", "参加予定"].includes(text)) return true;
+    // 括弧の残骸（閉じ括弧のみなど）を含む場合はゴミとみなす
+    if (/^[）)]+$/.test(text)) return true;
+    if (text.includes("参加予定") || text.includes("から")) {
+      // 人名として不自然な長さや文字種ならゴミ
+      if (text.length < 4) return true;
+    }
     return false;
   }
 
@@ -263,6 +281,7 @@ export class KokuminScraper extends BaseScraper {
     return text
       .replace(/（[^）]*）/g, "")
       .replace(/\([^)]*\)/g, "")
+      .replace(/[（()）]/g, "") // 残った孤立した括弧も削除
       .trim();
   }
 
@@ -270,7 +289,13 @@ export class KokuminScraper extends BaseScraper {
    * 姓名プレフィックスを削除し，名前を正規化する補助メソッド．
    */
   private cleanName(text: string): string {
-    let name = this.removeParentheses(text);
+    // 弁士名に含まれることがある時刻情報や注釈を削除（最短一致で括弧内のみ）
+    let name = text
+      .replace(/[（(][^）)]*?\d{1,2}[:：]\d{2}.*?[）)]/g, "")
+      .replace(/参加予定/g, "")
+      .trim();
+
+    name = this.removeParentheses(name);
     const dotSplit = name.split(/[・･]/);
     if (dotSplit.length > 1) {
       name = dotSplit[dotSplit.length - 1];

@@ -5,7 +5,13 @@
 import { differenceInMinutes, isAfter } from "date-fns";
 import { create } from "zustand";
 import { partiesApi, speechesApi } from "@/lib/api";
-import type { FilterState, Party, Speech, Stats } from "@/types";
+import type {
+  FilterState,
+  Party,
+  SearchSuggestion,
+  Speech,
+  Stats,
+} from "@/types";
 
 /**
  * ストアの状態定義．
@@ -15,6 +21,7 @@ interface StoreState {
   parties: Party[];
   rawSpeeches: Speech[];
   speeches: Speech[];
+  searchSuggestions: SearchSuggestion[];
   stats: Stats | null;
 
   // UI 関連の状態
@@ -40,6 +47,7 @@ interface StoreState {
   fetchParties: () => Promise<void>;
   fetchSpeechesByTime: (targetTime: Date) => Promise<void>;
   fetchStats: () => Promise<void>;
+  fetchSearchSuggestions: () => Promise<void>;
 }
 
 /**
@@ -123,6 +131,7 @@ export const useStore = create<StoreState>((set, get) => ({
   parties: [],
   speeches: [],
   rawSpeeches: [],
+  searchSuggestions: [],
   stats: null,
   activeSpeechId: null,
   selectedTime: new Date(),
@@ -250,6 +259,16 @@ export const useStore = create<StoreState>((set, get) => ({
       set({ stats });
     } catch (error) {
       console.error("❌ Failed to fetch stats:", error);
+    }
+  },
+
+  // 検索サジェスト用の候補リストを取得する
+  fetchSearchSuggestions: async () => {
+    try {
+      const suggestions = await speechesApi.getSearchSuggestions();
+      set({ searchSuggestions: suggestions });
+    } catch (error) {
+      console.error("❌ Failed to fetch search suggestions:", error);
     }
   },
 }));

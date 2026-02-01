@@ -41,6 +41,9 @@ export default function HomePage() {
   const fetchParties = useStore(state => state.fetchParties);
   const fetchSpeechesByTime = useStore(state => state.fetchSpeechesByTime);
   const fetchStats = useStore(state => state.fetchStats);
+  const fetchSearchSuggestions = useStore(
+    state => state.fetchSearchSuggestions,
+  );
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -56,6 +59,7 @@ export default function HomePage() {
     fetchParties();
     fetchSpeechesByTime(new Date());
     fetchStats();
+    fetchSearchSuggestions();
 
     // デスクトップ環境（lg 以上）の場合は演説リストをデフォルトで表示する
     if (window.matchMedia("(min-width: 992px)").matches) {

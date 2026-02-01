@@ -68,3 +68,8 @@ export interface ApiResponse<T> {
   error: string | null;
   loading: boolean;
 }
+// 検索サジェストに関する型定義．
+export interface SearchSuggestion {
+  name: string;
+  type: "candidate" | "speaker";
+}

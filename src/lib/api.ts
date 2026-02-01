@@ -8,6 +8,7 @@ import { scrapeAll, scrapeParty } from "@/actions/admin";
 import { getCandidate, getCandidates } from "@/actions/candidates";
 import { getParties, getParty } from "@/actions/parties";
 import {
+  getSearchSuggestions,
   getSpeech,
   getSpeeches,
   getSpeechesByTimeRange,
@@ -66,6 +67,9 @@ export const speechesApi = {
 
   /** 指定 ID の演説詳細を取得する． */
   getById: (id: number) => getSpeech(id),
+
+  /** 検索サジェスト用の候補リストを取得する． */
+  getSearchSuggestions: () => getSearchSuggestions(),
 };
 
 /**
