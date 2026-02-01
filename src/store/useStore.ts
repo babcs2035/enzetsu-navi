@@ -9,6 +9,9 @@ import type { FilterState, Party, Speech, Stats } from "@/types";
 interface StoreState {
   // データ
   parties: Party[];
+  // 内部データ
+  // 内部データ
+  rawSpeeches: Speech[];
   speeches: Speech[];
   stats: Stats | null;
 
@@ -46,10 +49,37 @@ const defaultFilter: FilterState = {
 
 const DEFAULT_COLOR = "#808080";
 
+// フィルタリングロジック（再利用可能にするため外に出すか、ストア内で関数化する）
+const applyFilter = (rawSpeeches: Speech[], filter: FilterState): Speech[] => {
+  return rawSpeeches.filter(speech => {
+    // 座標チェック (常に座標ありのみを表示する方針であれば)
+    // if (!speech.lat || !speech.lng) return false;
+
+    // 政党フィルター
+    if (
+      filter.selectedPartyIds.length > 0 &&
+      !filter.selectedPartyIds.includes(speech.party_id)
+    ) {
+      return false;
+    }
+
+    // 候補者フィルター (将来用)
+    if (
+      filter.selectedCandidateIds.length > 0 &&
+      !filter.selectedCandidateIds.includes(speech.candidate_id)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+};
+
 export const useStore = create<StoreState>((set, get) => ({
   // 初期状態の設定を行う．
   parties: [],
   speeches: [],
+  rawSpeeches: [], // 追加
   stats: null,
   activeSpeechId: null,
   selectedTime: new Date(),
@@ -77,22 +107,47 @@ export const useStore = create<StoreState>((set, get) => ({
     get().fetchSpeechesByTime(time);
   },
 
-  // UI アクション: フィルターを更新し，データを再取得する．
+  // UI アクション: フィルターを更新し，データを再計算する．
   setFilter: newFilter => {
-    set(state => ({
-      filter: { ...state.filter, ...newFilter },
-      activeSpeechId: null, // フィルター変更時に選択を解除する．
-    }));
-    // フィルター変更時は，リストと地図両方のデータを更新する．
-    const { fetchSpeechesByTime, selectedTime } = get();
-    fetchSpeechesByTime(selectedTime);
+    const currentFilter = get().filter;
+    const updatedFilter = { ...currentFilter, ...newFilter };
+
+    // 日付モードが変わった場合はデータを再取得する必要がある
+    if (newFilter.dateMode && newFilter.dateMode !== currentFilter.dateMode) {
+      set({ filter: updatedFilter, activeSpeechId: null });
+      const { fetchSpeechesByTime, selectedTime } = get();
+      fetchSpeechesByTime(selectedTime);
+      return;
+    }
+
+    // クライアントサイドフィルタリングのみの場合
+    const { rawSpeeches } = get();
+    const filtered = applyFilter(rawSpeeches, updatedFilter);
+
+    set({
+      filter: updatedFilter,
+      speeches: filtered,
+      activeSpeechId: null,
+    });
   },
 
-  // UI アクション: フィルターをリセットし，初期状態に戻す．
+  // UI アクション: フィルターをリセットし，初期状態（日付以外）に戻す．
   resetFilter: () => {
-    set({ filter: defaultFilter, activeSpeechId: null });
-    const { fetchSpeechesByTime, selectedTime } = get();
-    fetchSpeechesByTime(selectedTime);
+    const currentFilter = get().filter;
+    // dateMode は維持する
+    const resetFilterState: FilterState = {
+      ...defaultFilter,
+      dateMode: currentFilter.dateMode,
+    };
+
+    const { rawSpeeches } = get();
+    const filtered = applyFilter(rawSpeeches, resetFilterState);
+
+    set({
+      filter: resetFilterState,
+      speeches: filtered,
+      activeSpeechId: null,
+    });
   },
 
   // データ取得アクション: 政党一覧を取得する．
@@ -106,65 +161,42 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
 
-  // 互換性のための残置メソッド（実質的な処理は fetchSpeechesByTime に統合済み）．
+  // 互換性のための残置メソッド
   fetchSpeeches: async () => {
     get().fetchSpeechesByTime(get().selectedTime);
   },
 
-  // データ取得アクション: 現在のフィルターと時間に基づいて演説データを取得する．
+  // データ取得アクション: 現在の時間に基づいて演説データを取得する（フィルタリングはクライアントサイドで行う）．
   fetchSpeechesByTime: async (targetTime: Date) => {
     set({ isLoading: true, error: null });
     try {
       const { filter } = get();
-      let speeches: Speech[] = [];
+      let rawSpeeches: Speech[] = [];
 
+      // API 呼び出し時にフィルター条件 (party_ids, candidate_ids) を渡さないように変更
       if (filter.dateMode === "all") {
-        // 全期間表示（タイムスライダーの設定を無視する）．
-        speeches = await speechesApi.getAll({
-          party_ids:
-            filter.selectedPartyIds.length > 0
-              ? filter.selectedPartyIds
-              : undefined,
-          candidate_ids:
-            filter.selectedCandidateIds.length > 0
-              ? filter.selectedCandidateIds
-              : undefined,
-          has_location: true, // 常に座標ありのみを表示する．
+        rawSpeeches = await speechesApi.getAll({
+          has_location: true,
           limit: 1000,
         });
       } else if (filter.dateMode === "upcoming") {
-        // これから（現在時刻以降を表示し，タイムスライダーの設定を無視する）．
-        speeches = await speechesApi.getAll({
+        rawSpeeches = await speechesApi.getAll({
           start_time: new Date().toISOString(),
-          party_ids:
-            filter.selectedPartyIds.length > 0
-              ? filter.selectedPartyIds
-              : undefined,
-          candidate_ids:
-            filter.selectedCandidateIds.length > 0
-              ? filter.selectedCandidateIds
-              : undefined,
-          has_location: true, // 常に座標ありのみを表示する．
+          has_location: true,
           limit: 1000,
         });
       } else {
-        // 今日・明日（タイムスライダーの設定を反映する）．
-        // getByTimeRange はサーバー側で has_location チェックを行っているため自動的に絞り込まれる．
-        speeches = await speechesApi.getByTimeRange({
+        // 今日・明日
+        rawSpeeches = await speechesApi.getByTimeRange({
           target_time: targetTime.toISOString(),
           range_hours: 1,
-          party_ids:
-            filter.selectedPartyIds.length > 0
-              ? filter.selectedPartyIds
-              : undefined,
-          candidate_ids:
-            filter.selectedCandidateIds.length > 0
-              ? filter.selectedCandidateIds
-              : undefined,
         });
       }
 
-      set({ speeches, isLoading: false });
+      // クライアントサイドフィルタリング適用
+      const filtered = applyFilter(rawSpeeches, filter);
+
+      set({ rawSpeeches, speeches: filtered, isLoading: false });
     } catch (error) {
       console.error("❌ Failed to fetch speeches:", error);
       set({ error: "演説データの取得に失敗しました", isLoading: false });

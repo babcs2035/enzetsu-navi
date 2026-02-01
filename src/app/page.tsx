@@ -36,7 +36,7 @@ export default function HomePage() {
   const fetchSpeeches = useStore(state => state.fetchSpeeches);
   const fetchStats = useStore(state => state.fetchStats);
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 初期化時のみ実行するため dependency array は空とする．
@@ -45,6 +45,11 @@ export default function HomePage() {
     fetchParties();
     fetchSpeeches();
     fetchStats();
+
+    // デスクトップ環境（lg以上）の場合はサイドバーを開く
+    if (window.matchMedia("(min-width: 992px)").matches) {
+      setIsSidebarOpen(true);
+    }
   }, []);
 
   return (
@@ -119,7 +124,13 @@ export default function HomePage() {
 
         {/* サイドバー（演説リスト）を表示する． */}
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}>
-          <SpeechList />
+          <SpeechList
+            onSelect={() => {
+              if (window.matchMedia("(max-width: 991px)").matches) {
+                setIsSidebarOpen(false);
+              }
+            }}
+          />
         </Sidebar>
       </Flex>
     </Flex>

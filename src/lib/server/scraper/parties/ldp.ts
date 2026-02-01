@@ -75,6 +75,8 @@ export class LDPScraper extends BaseScraper {
                     .replace(/\s/g, ""); // すべての空白を削除する．
                 };
 
+                const locationInfos: string[] = [];
+
                 for (const p of infoParams) {
                   const text = (await p.innerText()).trim();
                   const link = await p.$("a");
@@ -82,9 +84,16 @@ export class LDPScraper extends BaseScraper {
                     // リンクがある場合は候補者名とみなす．
                     candidateNames.push(normalizeText(text));
                   } else {
-                    // リンクがない場合は場所とみなす．
-                    locationName = normalizeText(text);
+                    // リンクがない場合は場所・住所情報とみなす．
+                    locationInfos.push(normalizeText(text));
                   }
+                }
+
+                locationName = locationInfos[0] || "";
+                // 2つ目以降の情報があれば住所として扱う
+                let address = "";
+                if (locationInfos.length > 1) {
+                  address = locationInfos.slice(1).join(" ");
                 }
 
                 const speakers: string[] = [];
@@ -105,6 +114,7 @@ export class LDPScraper extends BaseScraper {
                       location_name: locationName,
                       source_url: this.baseUrl,
                       speakers: speakers,
+                      address: address || undefined,
                     });
                   }
                 } else if (officerName) {
@@ -115,6 +125,7 @@ export class LDPScraper extends BaseScraper {
                     location_name: locationName,
                     source_url: this.baseUrl,
                     speakers: speakers,
+                    address: address || undefined,
                   });
                 }
               } catch (e) {

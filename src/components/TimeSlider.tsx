@@ -1,9 +1,9 @@
 "use client";
 
 import { Box, Button, Flex, IconButton, Spinner, Text } from "@chakra-ui/react";
-import { addHours, endOfDay, format, startOfDay, subHours } from "date-fns";
+import { addMinutes, endOfDay, format, startOfDay } from "date-fns";
 import { ja } from "date-fns/locale";
-import { Clock, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/store/useStore";
 
@@ -45,11 +45,10 @@ export function TimeSlider() {
   };
 
   // 指定した時間だけ時刻を移動する．
-  const moveTime = (hours: number) => {
-    const newTime =
-      hours > 0
-        ? addHours(selectedTime, hours)
-        : subHours(selectedTime, Math.abs(hours));
+  const moveTime = (steps: number) => {
+    // 30分単位で移動
+    const minutes = steps * 30;
+    const newTime = addMinutes(selectedTime, minutes);
 
     // 範囲内（当日中）に制限する．
     if (newTime >= dayStart && newTime <= dayEnd) {
@@ -80,14 +79,14 @@ export function TimeSlider() {
 
     const interval = setInterval(() => {
       const current = useStore.getState().selectedTime;
-      const next = addHours(current, 1);
+      const next = addMinutes(current, 30); // 30分進める
       if (next > dayEnd) {
         setIsPlaying(false);
         setSelectedTime(dayStart);
       } else {
         setSelectedTime(next);
       }
-    }, 2000); // 2秒ごとに 1 時間進める．
+    }, 1500); // 1.5秒ごとに進める
 
     return () => clearInterval(interval);
   }, [isPlaying, dayEnd, dayStart, setSelectedTime]);
@@ -151,57 +150,7 @@ export function TimeSlider() {
 
       {showTimeControls && (
         <>
-          {/* 時刻表示 */}
-          <Flex align="center" justify="space-between" mb={4}>
-            <Flex align="center" gap={2}>
-              <Clock size={16} color="#3b82f6" />
-              <Text fontSize="sm" color="gray.500">
-                表示時刻
-              </Text>
-            </Flex>
-            <Box textAlign="right">
-              <Text fontSize="xl" fontWeight="bold" color="gray.800">
-                {format(selectedTime, "HH:mm", { locale: ja })}
-              </Text>
-              <Text fontSize="xs" color="gray.500">
-                {format(selectedTime, "M月d日（E）", { locale: ja })}
-              </Text>
-            </Box>
-          </Flex>
-
-          {/* スライダー */}
-          <Box mb={4}>
-            <input
-              type="range"
-              min="0"
-              max={maxValue}
-              value={sliderValue}
-              onChange={handleSliderChange}
-              style={{ width: "100%" }}
-              disabled={isLoading}
-            />
-            <Flex justify="space-between" fontSize="xs" color="gray.400" mt={1}>
-              <Text>00:00</Text>
-              <Text>06:00</Text>
-              <Text>12:00</Text>
-              <Text>18:00</Text>
-              <Text>24:00</Text>
-            </Flex>
-          </Box>
-
-          {/* コントロールボタン */}
-          <Flex align="center" justify="center" gap={2}>
-            <IconButton
-              aria-label="1時間前"
-              onClick={() => moveTime(-1)}
-              variant="ghost"
-              color="gray.600"
-              _hover={{ bg: "gray.100" }}
-              disabled={isLoading}
-            >
-              <SkipBack size={16} />
-            </IconButton>
-
+          <Flex align="center" gap={3} mb={2}>
             <IconButton
               aria-label={isPlaying ? "停止" : "再生"}
               onClick={() => setIsPlaying(!isPlaying)}
@@ -209,43 +158,83 @@ export function TimeSlider() {
               bg={isPlaying ? "blue.500" : "gray.100"}
               color={isPlaying ? "white" : "gray.600"}
               _hover={{ bg: isPlaying ? "blue.600" : "gray.200" }}
-              boxShadow={
-                isPlaying ? "0 4px 14px rgba(59, 130, 246, 0.4)" : "none"
-              }
-              disabled={isLoading}
-              size="lg"
+              size="sm"
+              flexShrink={0}
             >
               {isPlaying ? (
-                <Pause size={20} />
+                <Pause size={16} />
               ) : (
-                <Play size={20} style={{ marginLeft: 2 }} />
+                <Play size={16} style={{ marginLeft: 2 }} />
               )}
             </IconButton>
 
-            <IconButton
-              aria-label="1時間後"
-              onClick={() => moveTime(1)}
-              variant="ghost"
-              color="gray.600"
-              _hover={{ bg: "gray.100" }}
-              disabled={isLoading}
-            >
-              <SkipForward size={16} />
-            </IconButton>
+            <Box flex={1}>
+              <Flex align="baseline" gap={2}>
+                <Text
+                  fontSize="xl"
+                  fontWeight="bold"
+                  color="gray.800"
+                  lineHeight={1}
+                >
+                  {format(selectedTime, "HH:mm", { locale: ja })}
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  {format(selectedTime, "M/d(E)", { locale: ja })}
+                </Text>
+              </Flex>
+            </Box>
 
-            <Box w="1px" h={6} bg="gray.200" mx={2} />
+            <Flex align="center" gap={1}>
+              <IconButton
+                aria-label="30分前"
+                onClick={() => moveTime(-1)}
+                variant="ghost"
+                color="gray.600"
+                size="sm"
+                _hover={{ bg: "gray.100" }}
+                disabled={isLoading}
+              >
+                <SkipBack size={16} />
+              </IconButton>
 
-            <Button
-              onClick={goToNow}
-              variant="ghost"
-              size="sm"
-              color="gray.600"
-              _hover={{ bg: "gray.100" }}
-              disabled={isLoading}
-            >
-              現在時刻
-            </Button>
+              <IconButton
+                aria-label="30分後"
+                onClick={() => moveTime(1)}
+                variant="ghost"
+                color="gray.600"
+                size="sm"
+                _hover={{ bg: "gray.100" }}
+                disabled={isLoading}
+              >
+                <SkipForward size={16} />
+              </IconButton>
+
+              <Button
+                onClick={goToNow}
+                variant="ghost"
+                size="xs"
+                color="gray.600"
+                _hover={{ bg: "gray.100" }}
+                disabled={isLoading}
+                ml={1}
+              >
+                現在
+              </Button>
+            </Flex>
           </Flex>
+
+          {/* スライダー */}
+          <Box>
+            <input
+              type="range"
+              min="0"
+              max={maxValue}
+              value={sliderValue}
+              onChange={handleSliderChange}
+              style={{ width: "100%", height: "4px" }}
+              disabled={isLoading}
+            />
+          </Box>
         </>
       )}
 

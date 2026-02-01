@@ -9,7 +9,7 @@ import { useStore } from "@/store/useStore";
  * 政党によるフィルタリング機能を提供する．
  */
 export function FilterPanel() {
-  const { parties, filter, setFilter, resetFilter } = useStore();
+  const { parties, filter, setFilter, resetFilter, rawSpeeches } = useStore();
 
   const toggleParty = (partyId: number) => {
     const newIds = filter.selectedPartyIds.includes(partyId)
@@ -45,6 +45,12 @@ export function FilterPanel() {
             const isSelected =
               filter.selectedPartyIds.length === 0 ||
               filter.selectedPartyIds.includes(party.id);
+
+            // 現在の時間帯の全データから、この政党の件数をカウント
+            const count = rawSpeeches.filter(
+              s => s.party_id === party.id,
+            ).length;
+
             return (
               <Flex
                 key={party.id}
@@ -73,6 +79,12 @@ export function FilterPanel() {
                 <Text fontSize="sm" color="gray.700" flex={1} textAlign="left">
                   {party.name}
                 </Text>
+
+                {/* 件数表示 */}
+                <Text fontSize="xs" color="gray.500" fontWeight="medium">
+                  {count}件
+                </Text>
+
                 {isSelected && <Check size={16} color="#3b82f6" />}
               </Flex>
             );
@@ -87,7 +99,7 @@ export function FilterPanel() {
         w="full"
         mt={4}
         color="gray.500"
-        _hover={{ color: "gray.700" }}
+        _hover={{ bg: "gray.100", color: "gray.700" }}
       >
         フィルターをリセット
       </Button>

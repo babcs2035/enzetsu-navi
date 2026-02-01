@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Flex, Heading, IconButton, Text } from "@chakra-ui/react";
-import { Filter, MapPin, Menu } from "lucide-react";
+import { Filter, Menu } from "lucide-react";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -30,17 +30,6 @@ export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
       boxShadow="sm"
     >
       <Flex align="center" gap={3}>
-        <Flex
-          w={10}
-          h={10}
-          borderRadius="xl"
-          bgGradient="linear(to-br, blue.500, blue.700)"
-          align="center"
-          justify="center"
-          boxShadow="md"
-        >
-          <MapPin size={20} color="white" />
-        </Flex>
         <Box>
           <Heading size="md" color="gray.800" lineHeight="shorter">
             街頭演説ナビ

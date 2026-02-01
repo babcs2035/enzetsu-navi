@@ -47,7 +47,7 @@ export class TeamMiraiScraper extends BaseScraper {
           state: "visible",
           timeout: 10000,
         });
-      } catch (e) {
+      } catch (_e) {
         console.warn(
           "⚠️ Timeout waiting for #schedule selector, trying to parse anyway",
         );

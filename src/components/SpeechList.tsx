@@ -11,15 +11,26 @@ import {
 } from "@chakra-ui/react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { AlertCircle, Clock, ExternalLink, MapPin, Users } from "lucide-react";
+import {
+  AlertCircle,
+  Clock,
+  ExternalLink,
+  Map as MapIcon,
+  MapPin,
+  Users,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useStore } from "@/store/useStore";
+
+interface SpeechListProps {
+  onSelect?: () => void;
+}
 
 /**
  * 演説リスト表示コンポーネント．
  * 取得した演説データをリスト形式で表示し，選択時の挙動などを制御する．
  */
-export function SpeechList() {
+export function SpeechList({ onSelect }: SpeechListProps) {
   const { speeches, activeSpeechId, setActiveSpeechId, isLoading, error } =
     useStore();
   const listRef = useRef<HTMLDivElement>(null);
@@ -34,6 +45,13 @@ export function SpeechList() {
       }
     }
   }, [activeSpeechId]);
+
+  const handleSpeechClick = (id: number) => {
+    setActiveSpeechId(id);
+    if (onSelect) {
+      onSelect();
+    }
+  };
 
   // ローディング表示を行う．
   if (isLoading && speeches.length === 0) {
@@ -101,7 +119,7 @@ export function SpeechList() {
               ref={(el: HTMLDivElement | null) => {
                 if (el) cardRefs.current.set(speech.id, el);
               }}
-              onClick={() => setActiveSpeechId(speech.id)}
+              onClick={() => handleSpeechClick(speech.id)}
               p={4}
               borderRadius="xl"
               cursor="pointer"
@@ -180,11 +198,6 @@ export function SpeechList() {
                     >
                       {speech.location_name}
                     </Text>
-                    {speech.address && (
-                      <Text fontSize="xs" color="gray.500" mt={0.5}>
-                        {speech.address}
-                      </Text>
-                    )}
                     {!speech.lat && (
                       <Flex align="center" gap={1} mt={1}>
                         <AlertCircle size={12} color="#ECC94B" />
@@ -202,29 +215,59 @@ export function SpeechList() {
                     {format(startTime, "M月d日（E） HH:mm", { locale: ja })}
                   </Text>
 
-                  {/* ソースリンク（右寄せ） */}
-                  {speech.source_url && (
-                    <Link
-                      href={speech.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      display="inline-flex"
-                      alignItems="center"
-                      gap={1}
-                      ml="auto"
-                      color="blue.500"
-                      fontSize="xs"
-                      fontWeight="normal"
-                      _hover={{
-                        color: "blue.600",
-                        textDecoration: "underline",
-                      }}
-                    >
-                      <ExternalLink size={12} />
-                      出典
-                    </Link>
-                  )}
+                  <Flex ml="auto" gap={2}>
+                    {speech.source_url && (
+                      <Link
+                        href={speech.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        display="inline-flex"
+                        alignItems="center"
+                        gap={1}
+                        color="blue.500"
+                        bg="blue.50"
+                        px={2}
+                        py={1}
+                        borderRadius="md"
+                        fontSize="xs"
+                        fontWeight="bold"
+                        _hover={{
+                          bg: "blue.100",
+                          textDecoration: "none",
+                        }}
+                      >
+                        <ExternalLink size={12} />
+                        出典
+                      </Link>
+                    )}
+
+                    {speech.lat && speech.lng && (
+                      <Link
+                        href={`https://www.google.com/maps/search/?api=1&query=${speech.lat},${speech.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        display="inline-flex"
+                        alignItems="center"
+                        gap={1}
+                        color="blue.500"
+                        bg="blue.50"
+                        px={2}
+                        py={1}
+                        borderRadius="md"
+                        fontSize="xs"
+                        fontWeight="bold"
+                        _hover={{
+                          bg: "blue.100",
+                          textDecoration: "none",
+                        }}
+                      >
+                        <MapIcon size={12} />
+                        地図
+                      </Link>
+                    )}
+                  </Flex>
                 </Flex>
               </VStack>
             </Box>
