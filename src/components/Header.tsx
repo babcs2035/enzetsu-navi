@@ -35,22 +35,23 @@ export function Header({
       borderColor="gray.200"
       boxShadow="sm"
     >
-      <Flex align="center" gap={3}>
+      <Flex align="center" gap={3} display={{ base: "none", md: "flex" }}>
         <Box>
           <Heading size="md" color="gray.800" lineHeight="shorter">
             街頭演説ナビ
           </Heading>
-          <Text
-            fontSize="xs"
-            color="gray.500"
-            display={{ base: "none", md: "block" }}
-          >
+          <Text fontSize="xs" color="gray.500">
             演説場所をリアルタイムで確認
           </Text>
         </Box>
       </Flex>
 
-      <Box flex={1} maxW="400px" mx={4}>
+      <Box
+        flex={1}
+        maxW={{ base: "full", md: "400px" }}
+        ml={{ base: 0, md: 4 }}
+        mr={{ base: 2, md: 4 }}
+      >
         <SearchBox />
       </Box>
 

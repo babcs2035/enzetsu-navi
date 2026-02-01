@@ -175,7 +175,7 @@ export function SearchBox() {
                 as="li"
                 key={`${suggestion.type}-${suggestion.name}`}
                 px={4}
-                py={2}
+                py={3}
                 cursor="pointer"
                 _hover={{ bg: "gray.50" }}
                 onClick={() => handleSelect(suggestion.name)}
@@ -185,10 +185,32 @@ export function SearchBox() {
                 borderColor="gray.100"
               >
                 <HStack justify="space-between">
-                  <Text fontSize="sm" color="gray.800" fontWeight="medium">
-                    {suggestion.name}
-                  </Text>
-                  <Text fontSize="xs" color="gray.400">
+                  <VStack align="start" gap={0}>
+                    <Text fontSize="md" color="gray.800" fontWeight="medium">
+                      {suggestion.name}
+                    </Text>
+                    {suggestion.party && (
+                      <HStack gap={1.5} mt={0.5}>
+                        <Box
+                          w={2}
+                          h={2}
+                          borderRadius="full"
+                          bg={suggestion.party.color}
+                        />
+                        <Text fontSize="xs" color="gray.500">
+                          {suggestion.party.name}
+                        </Text>
+                      </HStack>
+                    )}
+                  </VStack>
+                  <Text
+                    fontSize="xs"
+                    color="gray.400"
+                    bg="gray.100"
+                    px={2}
+                    py={0.5}
+                    borderRadius="full"
+                  >
                     {suggestion.type === "candidate" ? "候補者" : "弁士"}
                   </Text>
                 </HStack>

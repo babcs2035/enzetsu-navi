@@ -231,10 +231,28 @@ export async function getSearchSuggestions() {
       candidate: {
         select: {
           name: true,
+          party: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+            },
+          },
         },
       },
     },
   });
+
+  // 候補者のマッピング（名前 -> 政党情報）
+  const candidateParties = new Map<
+    string,
+    { id: number; name: string; color: string }
+  >();
+  // 弁士のマッピング（名前 -> 政党情報）。弁士の場合は複数の政党で話す可能性があるが、今回は最初に見つかったものを採用する。
+  const speakerParties = new Map<
+    string,
+    { id: number; name: string; color: string }
+  >();
 
   const candidates = new Set<string>();
   const speakers = new Set<string>();
@@ -242,26 +260,54 @@ export async function getSearchSuggestions() {
   for (const s of speeches) {
     if (s.candidate?.name) {
       candidates.add(s.candidate.name);
+      if (s.candidate.party && !candidateParties.has(s.candidate.name)) {
+        candidateParties.set(s.candidate.name, {
+          id: s.candidate.party.id,
+          name: s.candidate.party.name,
+          color: s.candidate.party.color,
+        });
+      }
     }
     if (s.speakers && Array.isArray(s.speakers)) {
       for (const speaker of s.speakers) {
         if (typeof speaker === "string" && speaker.trim()) {
-          speakers.add(speaker.trim());
+          const cleanSpeaker = speaker.trim();
+          speakers.add(cleanSpeaker);
+          // 弁士の政党情報を記録（まだ記録されていない場合のみ）
+          if (s.candidate?.party && !speakerParties.has(cleanSpeaker)) {
+            speakerParties.set(cleanSpeaker, {
+              id: s.candidate.party.id,
+              name: s.candidate.party.name,
+              color: s.candidate.party.color,
+            });
+          }
         }
       }
     }
   }
 
-  const result: { name: string; type: "candidate" | "speaker" }[] = [];
+  const result: {
+    name: string;
+    type: "candidate" | "speaker";
+    party?: { id: number; name: string; color: string };
+  }[] = [];
 
   for (const name of candidates) {
-    result.push({ name, type: "candidate" });
+    result.push({
+      name,
+      type: "candidate",
+      party: candidateParties.get(name),
+    });
   }
 
   for (const name of speakers) {
     // 候補者としても存在する場合は候補者優先
     if (!candidates.has(name)) {
-      result.push({ name, type: "speaker" });
+      result.push({
+        name,
+        type: "speaker",
+        party: speakerParties.get(name),
+      });
     }
   }
 

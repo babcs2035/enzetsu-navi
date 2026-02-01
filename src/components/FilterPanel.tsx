@@ -57,11 +57,13 @@ export function FilterPanel() {
               s => s.party_id === party.id,
             ).length;
 
+            const isDisabled = count === 0;
+
             return (
               <Flex
                 key={party.id}
                 as="button"
-                onClick={() => toggleParty(party.id)}
+                onClick={() => !isDisabled && toggleParty(party.id)}
                 align="center"
                 gap={3}
                 p={2}
@@ -69,9 +71,15 @@ export function FilterPanel() {
                 bg={isSelected ? "blue.50" : "whiteAlpha.600"}
                 borderWidth="1px"
                 borderColor={isSelected ? "blue.200" : "transparent"}
-                opacity={isSelected ? 1 : 0.8}
-                _hover={{ bg: isSelected ? "blue.100" : "blackAlpha.50" }}
-                cursor="pointer"
+                opacity={isDisabled ? 0.4 : isSelected ? 1 : 0.8}
+                _hover={{
+                  bg: isDisabled
+                    ? "whiteAlpha.600"
+                    : isSelected
+                      ? "blue.100"
+                      : "blackAlpha.50",
+                }}
+                cursor={isDisabled ? "default" : "pointer"}
                 transition="all 0.2s"
                 w="full"
               >

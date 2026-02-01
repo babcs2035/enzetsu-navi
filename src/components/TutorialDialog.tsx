@@ -147,6 +147,26 @@ export function TutorialDialog({ isOpen, onClose }: TutorialDialogProps) {
                   ヘッダーの検索窓から候補者名を検索したり，フィルターパネルから興味のある政党だけを表示したりすることができます．
                 </Text>
               </Box>
+
+              <Box>
+                <Flex align="center" gap={3} mb={3}>
+                  <Box p={2} bg="pink.50" borderRadius="lg" color="pink.500">
+                    <Info size={24} />
+                  </Box>
+                  <Heading size="md" color="gray.700">
+                    6. 対応政党について
+                  </Heading>
+                </Flex>
+                <Text fontSize="sm" lineHeight="1.8">
+                  現在，以下の政党・団体の演説情報を自動収集しています：
+                  <br />
+                  <strong>
+                    自由民主党，日本維新の会，国民民主党，日本共産党，チームみらい
+                  </strong>
+                  <br />
+                  その他の政党・団体については，現在順次対応を進めております．
+                </Text>
+              </Box>
             </VStack>
           </DialogBody>
 

@@ -37,6 +37,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Metadata["viewport"] = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 /**
  * ルートレイアウトコンポーネント．
  * アプリケーション全体の基本レイアウトとプロバイダーの設定を行う．

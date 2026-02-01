@@ -41,6 +41,8 @@ export async function scrapeAll() {
     }
   }
 
+  await runCleanup();
+
   return JSON.parse(JSON.stringify({ message: "Scraping completed", results }));
 }
 
@@ -58,6 +60,8 @@ export async function scrapeParty(partyName: string) {
   const scraper = new ScraperClass();
   const count = await scraper.run();
 
+  await runCleanup();
+
   return JSON.parse(
     JSON.stringify({
       message: "Scraping completed",
@@ -65,4 +69,28 @@ export async function scrapeParty(partyName: string) {
       count,
     }),
   );
+}
+
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
+
+/**
+ * DBクリーンアップ処理を実行する．
+ */
+async function runCleanup() {
+  console.log("🧹 Running DB cleanup...");
+  try {
+    const { stdout, stderr } = await execAsync(
+      "pnpx tsx prisma/cleanup-db.ts",
+      {
+        cwd: process.cwd(),
+      },
+    );
+    if (stdout) console.log(stdout);
+    if (stderr) console.error(stderr);
+  } catch (error) {
+    console.error("❌ Cleanup failed:", error);
+  }
 }

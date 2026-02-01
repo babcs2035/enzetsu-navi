@@ -80,9 +80,15 @@ export abstract class BaseScraper {
    */
   protected async saveSpeech(data: SpeechData) {
     try {
+      // 候補者名と弁士名からスペース（全角・半角）を除去して正規化する
+      const cleanCandidateName = data.candidate_name.replace(/[\s\u3000]/g, "");
+      const cleanSpeakersInput = data.speakers?.map(s =>
+        s.replace(/[\s\u3000]/g, ""),
+      );
+
       const party = await this.getParty();
       const candidate = await this.getOrCreateCandidate(
-        data.candidate_name,
+        cleanCandidateName,
         party.id,
       );
 
@@ -101,9 +107,18 @@ export abstract class BaseScraper {
 
         // 弁士情報のマージ
         const currentSpeakers = existing.speakers || [];
-        const newSpeakersInput = data.speakers || [];
+        const newSpeakers = cleanSpeakersInput || [];
+
+        // 新しいリストにある名前（正規化済み）と同じ名前（正規化後）を持つ既存の要素を除外する
+        // これにより、表記揺れ（スペース有無）がある場合は新しい（正規化された）名前に置き換わる
+        const uniqueNewSpeakers = new Set(newSpeakers);
+        const filteredCurrentSpeakers = currentSpeakers.filter(speaker => {
+          const normalized = speaker.replace(/[\s\u3000]/g, "");
+          return !uniqueNewSpeakers.has(normalized);
+        });
+
         const mergedSpeakers = Array.from(
-          new Set([...currentSpeakers, ...newSpeakersInput]),
+          new Set([...filteredCurrentSpeakers, ...newSpeakers]),
         ).sort();
 
         // 弁士情報の変更確認
@@ -180,12 +195,12 @@ export abstract class BaseScraper {
           lat: location?.lat,
           lng: location?.lng,
           address: location?.address || data.address,
-          speakers: data.speakers || [],
+          speakers: cleanSpeakersInput || [],
         },
       });
 
       console.log(
-        `✅ Saved speech: ${data.candidate_name} @ ${data.location_name}`,
+        `✅ Saved speech: ${cleanCandidateName} @ ${data.location_name}`,
       );
       return speech;
     } catch (error) {

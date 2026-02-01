@@ -72,4 +72,9 @@ export interface ApiResponse<T> {
 export interface SearchSuggestion {
   name: string;
   type: "candidate" | "speaker";
+  party?: {
+    id: number;
+    name: string;
+    color: string;
+  };
 }
