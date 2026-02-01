@@ -11,6 +11,7 @@ import {
   Stats,
   TermsDialog,
   TimeSlider,
+  TutorialDialog,
 } from "@/components";
 import { FilterPanel } from "@/components/FilterPanel";
 import { useStore } from "@/store/useStore";
@@ -44,6 +45,7 @@ export default function HomePage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isFirstAccess, setIsFirstAccess] = useState(false);
 
   /**
@@ -65,6 +67,9 @@ export default function HomePage() {
     if (!hasAgreed) {
       setIsFirstAccess(true);
       setIsTermsOpen(true);
+    } else {
+      // 規約同意済みで，かつ今回のセッションでまだチュートリアルを見ていない場合に表示（任意）
+      // 今回は初回アクセス時（規約同意後）のみ自動表示とし，あとはボタンから開く運用とする
     }
   }, []);
 
@@ -74,6 +79,7 @@ export default function HomePage() {
       <Header
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onToggleFilter={() => setIsFilterOpen(!isFilterOpen)}
+        onOpenTutorial={() => setIsTutorialOpen(true)}
       />
 
       <Flex flex={1} overflow="hidden">
@@ -161,9 +167,19 @@ export default function HomePage() {
         isOpen={isTermsOpen}
         onClose={() => {
           setIsTermsOpen(false);
+          // 初回アクセス（規約同意）直後にチュートリアルを表示する
+          if (isFirstAccess) {
+            setIsTutorialOpen(true);
+          }
           setIsFirstAccess(false);
         }}
         isFirstAccess={isFirstAccess}
+      />
+
+      {/* チュートリアルダイアログ */}
+      <TutorialDialog
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
       />
     </Flex>
   );

@@ -1,19 +1,24 @@
 "use client";
 
 import { Box, Flex, Heading, IconButton, Text } from "@chakra-ui/react";
-import { Filter, Menu } from "lucide-react";
+import { Filter, HelpCircle, Menu } from "lucide-react";
 import { SearchBox } from "./SearchBox";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
   onToggleFilter: () => void;
+  onOpenTutorial: () => void;
 }
 
 /**
  * ヘッダーコンポーネント．
  * アプリケーションのロゴ，検索ボックス，およびサイドバー・フィルターパネルの表示制御ボタンを配置する．
  */
-export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
+export function Header({
+  onToggleSidebar,
+  onToggleFilter,
+  onOpenTutorial,
+}: HeaderProps) {
   return (
     <Flex
       as="header"
@@ -50,6 +55,17 @@ export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
       </Box>
 
       <Flex align="center" gap={2}>
+        <IconButton
+          aria-label="使い方ガイドを開く"
+          onClick={onOpenTutorial}
+          variant="ghost"
+          color="gray.600"
+          _hover={{ bg: "gray.100" }}
+          title="使い方ガイド"
+        >
+          <HelpCircle size={20} />
+        </IconButton>
+
         <IconButton
           aria-label="フィルターを開く"
           onClick={onToggleFilter}

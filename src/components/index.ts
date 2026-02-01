@@ -12,3 +12,4 @@ export { SpeechList } from "./SpeechList";
 export { Stats } from "./Stats";
 export { TermsDialog } from "./TermsDialog";
 export { TimeSlider } from "./TimeSlider";
+export { TutorialDialog } from "./TutorialDialog";

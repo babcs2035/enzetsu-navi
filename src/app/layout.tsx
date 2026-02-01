@@ -23,17 +23,17 @@ export const metadata: Metadata = {
       "日本の国政選挙における街頭演説の場所をリアルタイムで地図上に可視化．政党・候補者ごとの演説スケジュールを確認できます．",
     type: "website",
     locale: "ja_JP",
-    images: ["/enzetsu-navi/ogp.png"],
+    images: ["https://ktak.dev/enzetsu-navi/ogp.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "街頭演説ナビ",
     description:
       "日本の国政選挙における街頭演説の場所をリアルタイムで地図上に可視化．政党・候補者ごとの演説スケジュールを確認できます．",
-    images: ["/enzetsu-navi/ogp.png"],
+    images: ["https://ktak.dev/enzetsu-navi/ogp.png"],
   },
   icons: {
-    icon: "/enzetsu-navi/favicon.svg",
+    icon: "https://ktak.dev/enzetsu-navi/favicon.svg",
   },
 };
 
