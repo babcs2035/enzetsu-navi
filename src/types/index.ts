@@ -59,6 +59,7 @@ export interface FilterState {
   dateMode: DateMode;
   selectedPartyIds: number[];
   selectedCandidateIds: number[];
+  searchQuery: string;
 }
 
 // API レスポンスに関する型定義．

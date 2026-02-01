@@ -45,6 +45,7 @@ const defaultFilter: FilterState = {
   dateMode: "today",
   selectedPartyIds: [],
   selectedCandidateIds: [],
+  searchQuery: "",
 };
 
 const DEFAULT_COLOR = "#808080";
@@ -69,6 +70,24 @@ const applyFilter = (rawSpeeches: Speech[], filter: FilterState): Speech[] => {
       !filter.selectedCandidateIds.includes(speech.candidate_id)
     ) {
       return false;
+    }
+
+    // 候補者・弁士検索
+    if (filter.searchQuery) {
+      const query = filter.searchQuery.toLowerCase();
+      // 候補者名 または 弁士名配列のいずれかが一致するか
+      // ユーザー体験のため、スペース区切りでの複数キーワード（AND検索）などにはせず、単純な部分一致とする
+      // ただし、Autocompleteで選択された場合は完全一致に近いものが来る想定
+      const matchCandidate = speech.candidate_name
+        .toLowerCase()
+        .includes(query);
+      const matchSpeaker = speech.speakers.some(s =>
+        s.toLowerCase().includes(query),
+      );
+
+      if (!matchCandidate && !matchSpeaker) {
+        return false;
+      }
     }
 
     return true;
@@ -112,8 +131,12 @@ export const useStore = create<StoreState>((set, get) => ({
     const currentFilter = get().filter;
     const updatedFilter = { ...currentFilter, ...newFilter };
 
-    // 日付モードが変わった場合はデータを再取得する必要がある
-    if (newFilter.dateMode && newFilter.dateMode !== currentFilter.dateMode) {
+    // 日付モード または 検索クエリ が変わった場合はデータを再取得する
+    if (
+      (newFilter.dateMode && newFilter.dateMode !== currentFilter.dateMode) ||
+      (newFilter.searchQuery !== undefined &&
+        newFilter.searchQuery !== currentFilter.searchQuery)
+    ) {
       set({ filter: updatedFilter, activeSpeechId: null });
       const { fetchSpeechesByTime, selectedTime } = get();
       fetchSpeechesByTime(selectedTime);
@@ -187,9 +210,12 @@ export const useStore = create<StoreState>((set, get) => ({
         });
       } else {
         // 今日・明日
+        // 検索時は移動経路を表示したいので、その日のデータを広く取得する (24時間)
+        // 通常時はパフォーマンス重視で前後1時間
+        const rangeHours = filter.searchQuery ? 24 : 1;
         rawSpeeches = await speechesApi.getByTimeRange({
           target_time: targetTime.toISOString(),
-          range_hours: 1,
+          range_hours: rangeHours,
         });
       }
 

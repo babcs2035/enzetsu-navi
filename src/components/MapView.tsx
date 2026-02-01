@@ -40,18 +40,47 @@ export function MapView() {
   const markersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
   const popupRef = useRef<maplibregl.Popup | null>(null);
 
-  const { speeches, activeSpeechId, setActiveSpeechId } = useStore();
+  const { speeches, activeSpeechId, setActiveSpeechId, filter, selectedTime } =
+    useStore();
 
   // マーカーを作成する．
   const createMarker = useCallback(
     (speech: Speech): maplibregl.Marker | null => {
       if (!speech.lat || !speech.lng || !map.current) return null;
 
+      // 時間によるスタイル制御
+      let opacity = 1;
+      let scale = 1;
+      let zIndex = 1;
+
+      // 検索中かつ今日モードの場合は、選択時間との差分で表示を変える
+      if (filter.searchQuery && filter.dateMode === "today") {
+        const speechTime = new Date(speech.start_at).getTime();
+        const currentTime = selectedTime.getTime();
+        const diffHours = Math.abs(speechTime - currentTime) / (1000 * 60 * 60);
+
+        // 前後1.5時間以内なら強調、それ以外は薄く
+        if (diffHours <= 1.5) {
+          opacity = 1;
+          scale = 1.2;
+          zIndex = 10;
+        } else {
+          opacity = 0.3;
+          scale = 0.8;
+          zIndex = 0;
+        }
+      }
+
       // マーカー要素を作成する．
       const el = document.createElement("div");
       el.className = "party-marker";
       el.style.backgroundColor = speech.party_color;
       el.id = `marker-${speech.id}`;
+
+      // スタイル適用
+      el.style.opacity = opacity.toString();
+      el.style.transform = `scale(${scale})`;
+      el.style.zIndex = zIndex.toString();
 
       // クリックイベントを設定する．
       el.addEventListener("click", () => {
@@ -64,7 +93,7 @@ export function MapView() {
 
       return marker;
     },
-    [setActiveSpeechId],
+    [setActiveSpeechId, filter.searchQuery, filter.dateMode, selectedTime],
   );
 
   const isProgrammaticClose = useRef(false);
@@ -212,6 +241,50 @@ export function MapView() {
       "bottom-right",
     );
 
+    // 矢印アイコンの登録
+    map.current.on("load", () => {
+      if (!map.current) return;
+      // シンプルな矢印の画像を生成して登録
+      const size = 128; // 20 -> 128
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 12; // 線幅も太く
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        ctx.beginPath();
+        // 矢印の形状描画
+        const padding = size * 0.1;
+        const h = size - padding * 2;
+
+        // 座標調整 (中央基準)
+        const left = padding;
+        const right = size - padding;
+        const top = padding;
+        const bottom = size - padding;
+        const centerX = size / 2;
+
+        ctx.moveTo(left, bottom); // 左下
+        ctx.lineTo(centerX, top); // 上中央 (先端)
+        ctx.lineTo(right, bottom); // 右下
+        ctx.lineTo(centerX, bottom - h * 0.3); // 中央下（少し凹ませる）
+        ctx.closePath();
+
+        ctx.fill();
+        ctx.stroke();
+        const imageData = ctx.getImageData(0, 0, size, size);
+        map.current.addImage("arrow-icon", imageData, {
+          sdf: true,
+          pixelRatio: 4,
+        });
+      }
+    });
+
     // カススタム CSS を注入
     const style = document.createElement("style");
     style.innerHTML = `
@@ -234,6 +307,7 @@ export function MapView() {
       .custom-popup .maplibregl-popup-close-button:hover {
         background-color: #f1f5f9;
         color: #334155;
+        cursor: pointer;
       }
       .custom-popup .maplibregl-popup-tip {
         border-top-color: #ffffff;
@@ -247,7 +321,7 @@ export function MapView() {
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
         cursor: pointer;
         /* 重要: transform を transition に含めないことで、マップ移動時の追従性悪化を防ぐ */
-        transition: border-color 0.2s, box-shadow 0.2s;
+        transition: border-color 0.2s, box-shadow 0.2s, opacity 0.3s;
         box-sizing: border-box;
       }
       .party-marker:hover {
@@ -274,24 +348,186 @@ export function MapView() {
     };
   }, []);
 
-  // マーカーの更新を行う．
+  // マーカーとルートの更新を行う．
   useEffect(() => {
     if (!map.current) return;
 
-    // 既存のマーカーを削除する．
+    // --- 1. マーカーの更新 ---
+    // 既存のマーカーを削除
     markersRef.current.forEach(marker => {
       marker.remove();
     });
     markersRef.current.clear();
 
-    // 新しいマーカーを追加する．
+    // 新しいマーカーを追加
     speeches.forEach(speech => {
       const marker = createMarker(speech);
       if (marker) {
         markersRef.current.set(speech.id, marker);
       }
     });
-  }, [speeches, createMarker]);
+
+    // --- 2. 移動経路（LineString + Arrows）の描画 ---
+    // レイヤー・ソースID定義
+    const sourceId = "route-source";
+    const lineLayerId = "route-line-layer";
+    const arrowLayerId = "route-arrow-layer";
+
+    // 安全に削除するためのヘルパー関数
+    const removeLayers = () => {
+      if (!map.current) return;
+      if (map.current.getLayer(arrowLayerId))
+        map.current.removeLayer(arrowLayerId);
+      if (map.current.getLayer(lineLayerId))
+        map.current.removeLayer(lineLayerId);
+      if (map.current.getSource(sourceId)) map.current.removeSource(sourceId);
+    };
+
+    // 一旦削除してクリーンな状態にする
+    removeLayers();
+
+    // 候補者が一人だけの場合のみ描画する
+    // データ件数が2件以上ないと線は引けない
+    let shouldFitBounds = false;
+    const boundsCoordinates: [number, number][] = [];
+
+    // データが存在する場合、バウンディングボックス計算用の座標を集める
+    // 検索などで絞り込まれている場合を想定
+    speeches.forEach(s => {
+      if (s.lng && s.lat) {
+        boundsCoordinates.push([s.lng, s.lat]);
+      }
+    });
+
+    // 検索クエリがある場合、ズームを合わせる
+    if (filter.searchQuery) {
+      shouldFitBounds = true;
+    }
+
+    if (speeches.length >= 2) {
+      // 候補者IDを一意にする
+      const candidateIds = new Set(speeches.map(s => s.candidate_id));
+      const isSingleCandidate = candidateIds.size === 1;
+
+      // 共通の弁士がいるかチェック（応援弁士検索時の移動経路表示のため）
+      let isCommonSpeaker = false;
+      const firstSpeakers = speeches[0].speakers || [];
+      // 候補者が複数で、かつ最初の演説に弁士がいる場合のみチェック
+      if (!isSingleCandidate && firstSpeakers.length > 0) {
+        // すべての演説に含まれている弁士がいるか
+        isCommonSpeaker = firstSpeakers.some(speaker =>
+          speeches.every(s => s.speakers?.includes(speaker)),
+        );
+      }
+
+      // 厳密に1人の候補者、または共通の弁士がいる場合のみ線を引く
+      // かつ、それが検索などによる意図的な絞り込みの結果である場合に限定する？
+      // 現状は isSingleCandidate なら無条件で引いているので、それに合わせる。
+      if (isSingleCandidate || isCommonSpeaker) {
+        // 時系列順にソート (immutableに)
+        const sortedSpeeches = [...speeches].sort(
+          (a, b) =>
+            new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
+        );
+
+        const routeCoordinates = sortedSpeeches.reduce<[number, number][]>(
+          (acc, s) => {
+            if (s.lng && s.lat) {
+              acc.push([s.lng, s.lat]);
+            }
+            return acc;
+          },
+          [],
+        );
+
+        if (routeCoordinates.length >= 2) {
+          const partyColor = sortedSpeeches[0].party_color || "#3b82f6";
+
+          shouldFitBounds = true;
+
+          // ソースを追加
+          try {
+            map.current.addSource(sourceId, {
+              type: "geojson",
+              data: {
+                type: "Feature",
+                properties: {},
+                geometry: {
+                  type: "LineString",
+                  coordinates: routeCoordinates,
+                },
+              },
+            });
+
+            // 線のレイヤーを追加
+            map.current.addLayer({
+              id: lineLayerId,
+              type: "line",
+              source: sourceId,
+              layout: {
+                "line-join": "round",
+                "line-cap": "round",
+              },
+              paint: {
+                "line-color": partyColor,
+                "line-width": 5,
+                "line-opacity": 0.8,
+              },
+            });
+
+            // 矢印のレイヤーを追加
+            // 注意: 'arrow-icon' がロードされている必要がある。
+            // map.on('load') で追加しているが、タイミング的にまだない場合の対策が必要かも知れないが
+            // 通常 React の useEffect フローなら画像の準備は間に合うことが多い。
+            // もし画像がない場合はエラーにならず単に表示されない。
+            if (map.current.hasImage("arrow-icon")) {
+              map.current.addLayer({
+                id: arrowLayerId,
+                type: "symbol",
+                source: sourceId,
+                layout: {
+                  "symbol-placement": "line",
+                  "symbol-spacing": 100, // 矢印の間隔
+                  "icon-image": "arrow-icon",
+                  "icon-size": 0.6,
+                  "icon-allow-overlap": true,
+                  "icon-rotate": 90, // アイコンの向き調整（右向き矢印を進行方向に向ける）
+                  "icon-rotation-alignment": "map",
+                },
+                paint: {
+                  "icon-color": partyColor, // SDFアイコンなので色変更可能
+                  "icon-halo-color": "#ffffff",
+                  "icon-halo-width": 2,
+                },
+              });
+            }
+          } catch (e) {
+            console.error("Layer add failed", e);
+            // 失敗時はクリーンアップ
+            removeLayers();
+          }
+        }
+      }
+    }
+
+    // --- 3. Fit Bounds (検索結果全体を表示) ---
+    // 検索クエリがある場合や、明示的に絞り込まれている場合はズーム合わせを行う
+    if (boundsCoordinates.length > 0) {
+      // shouldFitBoundsフラグが立っている場合のみ実行
+      if (shouldFitBounds && boundsCoordinates.length > 0) {
+        const bounds = new maplibregl.LngLatBounds();
+        boundsCoordinates.forEach(coord => {
+          bounds.extend(coord);
+        });
+
+        map.current.fitBounds(bounds, {
+          padding: { top: 100, bottom: 200, left: 50, right: 350 }, // サイドバーやヘッダーを考慮
+          maxZoom: 16,
+          duration: 1200,
+        });
+      }
+    }
+  }, [speeches, createMarker, filter.searchQuery]);
 
   // アクティブな演説が変更されたときの処理．
   useEffect(() => {

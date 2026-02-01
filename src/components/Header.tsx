@@ -2,6 +2,7 @@
 
 import { Box, Flex, Heading, IconButton, Text } from "@chakra-ui/react";
 import { Filter, Menu } from "lucide-react";
+import { SearchBox } from "./SearchBox";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -34,11 +35,19 @@ export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
           <Heading size="md" color="gray.800" lineHeight="shorter">
             街頭演説ナビ
           </Heading>
-          <Text fontSize="xs" color="gray.500">
+          <Text
+            fontSize="xs"
+            color="gray.500"
+            display={{ base: "none", md: "block" }}
+          >
             演説場所をリアルタイムで確認
           </Text>
         </Box>
       </Flex>
+
+      <Box flex={1} maxW="400px" mx={4}>
+        <SearchBox />
+      </Box>
 
       <Flex align="center" gap={2}>
         <IconButton
