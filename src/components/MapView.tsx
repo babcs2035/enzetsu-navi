@@ -4,10 +4,14 @@ import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Box } from "@chakra-ui/react";
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
 import { useStore } from "@/store/useStore";
 import type { Speech } from "@/types";
 
-// OpenStreetMap タイルスタイル（API キー不要）．
+/**
+ * OpenStreetMap のタイルレイヤーを使用した地図スタイル定義．
+ */
 const OSM_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -31,37 +35,38 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
 };
 
 /**
- * 地図コンポーネント．
- * MapLibre GL JS を使用して地図を表示し，演説場所をマーカーとして描画する．
+ * 地図表示コンポーネント．
+ * MapLibre GL JS を用いて演説場所のマーカー表示，経路描画，ポップアップ管理を行う．
  */
 export function MapView() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<number, maplibregl.Marker>>(new Map());
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const isProgrammaticClose = useRef(false);
 
   const { speeches, activeSpeechId, setActiveSpeechId, filter, selectedTime } =
     useStore();
 
-  // マーカーを作成する．
+  /**
+   * 指定された演説データに基づいてカスタムマーカーを作成する．
+   */
   const createMarker = useCallback(
     (speech: Speech): maplibregl.Marker | null => {
       if (!speech.lat || !speech.lng || !map.current) return null;
 
-      // 時間によるスタイル制御
       let opacity = 1;
       let scale = 1;
       let zIndex = 1;
 
-      // 検索中かつ今日モードの場合は、選択時間との差分で表示を変える
+      // 検索フィルタ適用中かつ「今日」モード時の視覚的強調処理
       if (filter.searchQuery && filter.dateMode === "today") {
         const speechTime = new Date(speech.start_at).getTime();
         const currentTime = selectedTime.getTime();
         const diffHours = Math.abs(speechTime - currentTime) / (1000 * 60 * 60);
 
-        // 前後1.5時間以内なら強調、それ以外は薄く
+        // 選択時刻の前後 1.5 時間以内を強調し，他を透過させる
         if (diffHours <= 1.5) {
-          opacity = 1;
           scale = 1.2;
           zIndex = 10;
         } else {
@@ -71,18 +76,14 @@ export function MapView() {
         }
       }
 
-      // マーカー要素を作成する．
       const el = document.createElement("div");
       el.className = "party-marker";
       el.style.backgroundColor = speech.party_color;
       el.id = `marker-${speech.id}`;
-
-      // スタイル適用
       el.style.opacity = opacity.toString();
       el.style.transform = `scale(${scale})`;
       el.style.zIndex = zIndex.toString();
 
-      // クリックイベントを設定する．
       el.addEventListener("click", () => {
         setActiveSpeechId(speech.id);
       });
@@ -96,9 +97,9 @@ export function MapView() {
     [setActiveSpeechId, filter.searchQuery, filter.dateMode, selectedTime],
   );
 
-  const isProgrammaticClose = useRef(false);
-
-  // ポップアップを表示する．
+  /**
+   * マーカークリック時に詳細情報を表示するポップアップを生成・表示する．
+   */
   const showPopup = useCallback(
     (speech: Speech) => {
       if (!speech.lat || !speech.lng || !map.current) return;
@@ -110,12 +111,7 @@ export function MapView() {
       }
 
       const startTime = new Date(speech.start_at);
-      const timeStr = startTime.toLocaleString("ja-JP", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const timeStr = format(startTime, "M月d日 HH:mm", { locale: ja });
 
       const iconColor = "#4A5568";
       const iconStyle =
@@ -194,7 +190,6 @@ export function MapView() {
         .setHTML(popupContent)
         .addTo(map.current);
 
-      // close イベントのハンドリングを行う．
       popup.on("close", () => {
         if (!isProgrammaticClose.current) {
           setActiveSpeechId(null);
@@ -203,7 +198,6 @@ export function MapView() {
 
       popupRef.current = popup;
 
-      // 地図を指定座標へ移動する．
       map.current.flyTo({
         center: [speech.lng, speech.lat],
         zoom: 15,
@@ -213,19 +207,20 @@ export function MapView() {
     [setActiveSpeechId],
   );
 
-  // 地図の初期化を行う．
+  /**
+   * コンポーネントのマウント時に地図インスタンスを初期化する．
+   */
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: OSM_STYLE,
-      center: [139.6917, 35.6895], // 東京を中心に初期化する．
+      center: [139.6917, 35.6895],
       zoom: 10,
       attributionControl: false,
     });
 
-    // コントロールを追加する．
     map.current.addControl(new maplibregl.NavigationControl(), "top-right");
     map.current.addControl(
       new maplibregl.GeolocateControl({
@@ -241,11 +236,10 @@ export function MapView() {
       "bottom-right",
     );
 
-    // 矢印アイコンの登録
+    // ルート表示用の矢印アイコンを生成して登録する
     map.current.on("load", () => {
       if (!map.current) return;
-      // シンプルな矢印の画像を生成して登録
-      const size = 128; // 20 -> 128
+      const size = 128;
       const canvas = document.createElement("canvas");
       canvas.width = size;
       canvas.height = size;
@@ -253,26 +247,23 @@ export function MapView() {
       if (ctx) {
         ctx.fillStyle = "#ffffff";
         ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 12; // 線幅も太く
+        ctx.lineWidth = 12;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
 
         ctx.beginPath();
-        // 矢印の形状描画
         const padding = size * 0.1;
         const h = size - padding * 2;
-
-        // 座標調整 (中央基準)
         const left = padding;
         const right = size - padding;
         const top = padding;
         const bottom = size - padding;
         const centerX = size / 2;
 
-        ctx.moveTo(left, bottom); // 左下
-        ctx.lineTo(centerX, top); // 上中央 (先端)
-        ctx.lineTo(right, bottom); // 右下
-        ctx.lineTo(centerX, bottom - h * 0.3); // 中央下（少し凹ませる）
+        ctx.moveTo(left, bottom);
+        ctx.lineTo(centerX, top);
+        ctx.lineTo(right, bottom);
+        ctx.lineTo(centerX, bottom - h * 0.3);
         ctx.closePath();
 
         ctx.fill();
@@ -285,7 +276,7 @@ export function MapView() {
       }
     });
 
-    // カススタム CSS を注入
+    // ポップアップおよびマーカー用のカスタムスタイルを注入する
     const style = document.createElement("style");
     style.innerHTML = `
       .custom-popup .maplibregl-popup-content {
@@ -312,7 +303,6 @@ export function MapView() {
       .custom-popup .maplibregl-popup-tip {
         border-top-color: #ffffff;
       }
-      /* マーカーのアニメーション */
       .party-marker {
         width: 20px;
         height: 20px;
@@ -320,18 +310,15 @@ export function MapView() {
         border: 3px solid white;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
         cursor: pointer;
-        /* 重要: transform を transition に含めないことで、マップ移動時の追従性悪化を防ぐ */
         transition: border-color 0.2s, box-shadow 0.2s, opacity 0.3s;
         box-sizing: border-box;
       }
       .party-marker:hover {
-        /* scale は使用せず、box-shadow で強調する */
         box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.5), 0 8px 12px -2px rgba(0,0,0,0.4);
         z-index: 10;
         border-width: 2px;
       }
       .party-marker.active {
-        /* active 時の強調 */
         box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5), 0 8px 12px -2px rgba(0,0,0,0.4);
         z-index: 20;
         border-color: white;
@@ -348,18 +335,19 @@ export function MapView() {
     };
   }, []);
 
-  // マーカーとルートの更新を行う．
+  /**
+   * 演説データまたはフィルター条件が変更された際に，マーカーと移動経路を更新する．
+   */
   useEffect(() => {
     if (!map.current) return;
 
-    // --- 1. マーカーの更新 ---
-    // 既存のマーカーを削除
+    // 既存の全マーカーを地図から削除してクリアする
     markersRef.current.forEach(marker => {
       marker.remove();
     });
     markersRef.current.clear();
 
-    // 新しいマーカーを追加
+    // 新しい演説リストに基づいてマーカーを再配置する
     speeches.forEach(speech => {
       const marker = createMarker(speech);
       if (marker) {
@@ -367,13 +355,10 @@ export function MapView() {
       }
     });
 
-    // --- 2. 移動経路（LineString + Arrows）の描画 ---
-    // レイヤー・ソースID定義
     const sourceId = "route-source";
     const lineLayerId = "route-line-layer";
     const arrowLayerId = "route-arrow-layer";
 
-    // 安全に削除するためのヘルパー関数
     const removeLayers = () => {
       if (!map.current) return;
       if (map.current.getLayer(arrowLayerId))
@@ -383,48 +368,36 @@ export function MapView() {
       if (map.current.getSource(sourceId)) map.current.removeSource(sourceId);
     };
 
-    // 一旦削除してクリーンな状態にする
     removeLayers();
 
-    // 候補者が一人だけの場合のみ描画する
-    // データ件数が2件以上ないと線は引けない
     let shouldFitBounds = false;
     const boundsCoordinates: [number, number][] = [];
 
-    // データが存在する場合、バウンディングボックス計算用の座標を集める
-    // 検索などで絞り込まれている場合を想定
+    // 表示範囲の計算用に座標を収集する
     speeches.forEach(s => {
       if (s.lng && s.lat) {
         boundsCoordinates.push([s.lng, s.lat]);
       }
     });
 
-    // 検索クエリがある場合、ズームを合わせる
     if (filter.searchQuery) {
       shouldFitBounds = true;
     }
 
+    // 演説が複数あり，かつ同一候補者（または同一弁士）によるものなら移動経路を描画する
     if (speeches.length >= 2) {
-      // 候補者IDを一意にする
       const candidateIds = new Set(speeches.map(s => s.candidate_id));
       const isSingleCandidate = candidateIds.size === 1;
 
-      // 共通の弁士がいるかチェック（応援弁士検索時の移動経路表示のため）
       let isCommonSpeaker = false;
       const firstSpeakers = speeches[0].speakers || [];
-      // 候補者が複数で、かつ最初の演説に弁士がいる場合のみチェック
       if (!isSingleCandidate && firstSpeakers.length > 0) {
-        // すべての演説に含まれている弁士がいるか
         isCommonSpeaker = firstSpeakers.some(speaker =>
           speeches.every(s => s.speakers?.includes(speaker)),
         );
       }
 
-      // 厳密に1人の候補者、または共通の弁士がいる場合のみ線を引く
-      // かつ、それが検索などによる意図的な絞り込みの結果である場合に限定する？
-      // 現状は isSingleCandidate なら無条件で引いているので、それに合わせる。
       if (isSingleCandidate || isCommonSpeaker) {
-        // 時系列順にソート (immutableに)
         const sortedSpeeches = [...speeches].sort(
           (a, b) =>
             new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
@@ -442,10 +415,8 @@ export function MapView() {
 
         if (routeCoordinates.length >= 2) {
           const partyColor = sortedSpeeches[0].party_color || "#3b82f6";
-
           shouldFitBounds = true;
 
-          // ソースを追加
           try {
             map.current.addSource(sourceId, {
               type: "geojson",
@@ -459,7 +430,6 @@ export function MapView() {
               },
             });
 
-            // 線のレイヤーを追加
             map.current.addLayer({
               id: lineLayerId,
               type: "line",
@@ -475,11 +445,6 @@ export function MapView() {
               },
             });
 
-            // 矢印のレイヤーを追加
-            // 注意: 'arrow-icon' がロードされている必要がある。
-            // map.on('load') で追加しているが、タイミング的にまだない場合の対策が必要かも知れないが
-            // 通常 React の useEffect フローなら画像の準備は間に合うことが多い。
-            // もし画像がない場合はエラーにならず単に表示されない。
             if (map.current.hasImage("arrow-icon")) {
               map.current.addLayer({
                 id: arrowLayerId,
@@ -487,63 +452,57 @@ export function MapView() {
                 source: sourceId,
                 layout: {
                   "symbol-placement": "line",
-                  "symbol-spacing": 100, // 矢印の間隔
+                  "symbol-spacing": 100,
                   "icon-image": "arrow-icon",
                   "icon-size": 0.6,
                   "icon-allow-overlap": true,
-                  "icon-rotate": 90, // アイコンの向き調整（右向き矢印を進行方向に向ける）
+                  "icon-rotate": 90,
                   "icon-rotation-alignment": "map",
                 },
                 paint: {
-                  "icon-color": partyColor, // SDFアイコンなので色変更可能
+                  "icon-color": partyColor,
                   "icon-halo-color": "#ffffff",
                   "icon-halo-width": 2,
                 },
               });
             }
           } catch (e) {
-            console.error("Layer add failed", e);
-            // 失敗時はクリーンアップ
+            console.error("❌ Failed to add route layer:", e);
             removeLayers();
           }
         }
       }
     }
 
-    // --- 3. Fit Bounds (検索結果全体を表示) ---
-    // 検索クエリがある場合や、明示的に絞り込まれている場合はズーム合わせを行う
-    if (boundsCoordinates.length > 0) {
-      // shouldFitBoundsフラグが立っている場合のみ実行
-      if (shouldFitBounds && boundsCoordinates.length > 0) {
-        const bounds = new maplibregl.LngLatBounds();
-        boundsCoordinates.forEach(coord => {
-          bounds.extend(coord);
-        });
+    // 必要に応じて表示範囲全体のズーム調整を行う（Fit Bounds）
+    if (shouldFitBounds && boundsCoordinates.length > 0) {
+      const bounds = new maplibregl.LngLatBounds();
+      boundsCoordinates.forEach(coord => {
+        bounds.extend(coord);
+      });
 
-        map.current.fitBounds(bounds, {
-          padding: { top: 100, bottom: 200, left: 50, right: 350 }, // サイドバーやヘッダーを考慮
-          maxZoom: 16,
-          duration: 1200,
-        });
-      }
+      map.current.fitBounds(bounds, {
+        padding: { top: 100, bottom: 200, left: 50, right: 350 },
+        maxZoom: 16,
+        duration: 1200,
+      });
     }
   }, [speeches, createMarker, filter.searchQuery]);
 
-  // アクティブな演説が変更されたときの処理．
+  /**
+   * ストア上のアクティブな演説 ID が変更された際，マーカーの強調および詳細ポップアップ表示を行う．
+   */
   useEffect(() => {
-    // 全てのマーカーのアクティブ状態をリセットする．
     markersRef.current.forEach((marker, id) => {
       const el = marker.getElement();
       el.classList.toggle("active", id === activeSpeechId);
     });
 
-    // ポップアップを表示する．
     if (activeSpeechId) {
       const speech = speeches.find(s => s.id === activeSpeechId);
       if (speech) {
         showPopup(speech);
       } else {
-        // データセットから見つからない（フィルタリングされた）場合は閉じる
         if (popupRef.current) {
           isProgrammaticClose.current = true;
           popupRef.current.remove();
@@ -552,7 +511,6 @@ export function MapView() {
         }
       }
     } else {
-      // IDがnullになったら閉じる
       if (popupRef.current) {
         isProgrammaticClose.current = true;
         popupRef.current.remove();

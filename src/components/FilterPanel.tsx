@@ -6,11 +6,14 @@ import { useStore } from "@/store/useStore";
 
 /**
  * フィルターパネルコンポーネント．
- * 政党によるフィルタリング機能を提供する．
+ * 政党の選択状態に応じたフィルタリング機能，および該当件数の表示を行う．
  */
 export function FilterPanel() {
   const { parties, filter, setFilter, resetFilter, rawSpeeches } = useStore();
 
+  /**
+   * 指定された政党の選択状態を切り替える．
+   */
   const toggleParty = (partyId: number) => {
     const newIds = filter.selectedPartyIds.includes(partyId)
       ? filter.selectedPartyIds.filter(id => id !== partyId)
@@ -18,6 +21,9 @@ export function FilterPanel() {
     setFilter({ selectedPartyIds: newIds });
   };
 
+  /**
+   * 全ての政党の選択を解除（＝全て表示）する．
+   */
   const deselectAllParties = () => {
     setFilter({ selectedPartyIds: [] });
   };
@@ -46,7 +52,7 @@ export function FilterPanel() {
               filter.selectedPartyIds.length === 0 ||
               filter.selectedPartyIds.includes(party.id);
 
-            // 現在の時間帯の全データから、この政党の件数をカウント
+            // 現在の時間帯の全データのうち，この政党に属する演説数をカウントする
             const count = rawSpeeches.filter(
               s => s.party_id === party.id,
             ).length;
@@ -80,7 +86,6 @@ export function FilterPanel() {
                   {party.name}
                 </Text>
 
-                {/* 件数表示 */}
                 <Text fontSize="xs" color="gray.500" fontWeight="medium">
                   {count}件
                 </Text>

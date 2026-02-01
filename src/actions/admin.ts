@@ -7,6 +7,9 @@ import { KokuminScraper } from "@/lib/server/scraper/parties/kokumin";
 import { LDPScraper } from "@/lib/server/scraper/parties/ldp";
 import { TeamMiraiScraper } from "@/lib/server/scraper/parties/team_mirai";
 
+/**
+ * 利用可能なスクレイパーのリスト定義．
+ */
 const SCRAPERS: Record<string, new () => BaseScraper> = {
   LDP: LDPScraper,
   Ishin: IshinScraper,
@@ -15,9 +18,11 @@ const SCRAPERS: Record<string, new () => BaseScraper> = {
   TeamMirai: TeamMiraiScraper,
 };
 
+/**
+ * 全ての政党の最新演説データを一括で取得し，データベースを更新する．
+ */
 export async function scrapeAll() {
   const results = [];
-  // 全スクレイパーを実行する．
   const scrapers = Object.values(SCRAPERS).map(
     ScraperClass => new ScraperClass(),
   );
@@ -27,7 +32,7 @@ export async function scrapeAll() {
       const count = await scraper.run();
       results.push({ party: scraper.partyName, status: "success", count });
     } catch (error) {
-      console.error(error);
+      console.error(`💥 Failed to scrape ${scraper.partyName}:`, error);
       results.push({
         party: scraper.partyName,
         status: "failed",
@@ -39,6 +44,9 @@ export async function scrapeAll() {
   return JSON.parse(JSON.stringify({ message: "Scraping completed", results }));
 }
 
+/**
+ * 指定された特定の政党についてのみ最新演説データを取得する．
+ */
 export async function scrapeParty(partyName: string) {
   const decodedName = decodeURIComponent(partyName);
   const ScraperClass = SCRAPERS[decodedName];

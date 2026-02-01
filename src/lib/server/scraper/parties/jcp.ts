@@ -1,5 +1,8 @@
 import { BaseScraper, type SpeechData } from "../base";
 
+/**
+ * 日本共産党の公式サイトから演説スケジュールを収集するスクレイパー．
+ */
 export class JCPScraper extends BaseScraper {
   partyName = "日本共産党";
   baseUrl = "https://www.jcp.or.jp/enzetu/";
@@ -14,60 +17,42 @@ export class JCPScraper extends BaseScraper {
         await page.goto(this.baseUrl, { timeout: 30000 });
       } catch (e) {
         console.warn(
-          `⚠️ JCP scraping: Failed to access page (${this.baseUrl}):`,
+          `⚠️ Failed to access JCP schedule page: ${this.baseUrl}`,
           e,
         );
         await browser.close();
         return [];
       }
 
-      // 日付ごとのセクションを取得する
-      // h3（日付）とその直後の div.schedule のリストをセットで扱う必要があるが、
-      // 構造的には section > h3, div.schedule, div.schedule ... となっているようだ。
-      // 提供されたHTMLを見ると、sectionタグの中に h3 があり、その後に div.schedule が続いている。
-
+      // 日付ごとのスケジュールセクションを取得する
       const sections = await page.$$("div.schedule01 > section");
 
       for (const section of sections) {
         try {
-          // 日付を取得
+          // 日付の見出しテキスト（例：「1 月 31 日（土）」）を取得する
           const h3 = await section.$("h3");
           if (!h3) continue;
           const dateText = (await h3.innerText()).trim();
-          // 例: "1月31日（土）"
 
           const parsedDate = this.parseDate(dateText);
           if (!parsedDate) continue;
 
-          // スケジュールブロックを取得
+          // セクション内の各スケジュールブロックを取得する
           const schedules = await section.$$("div.schedule");
 
           for (const schedule of schedules) {
             try {
-              // 弁士（Speaker）を取得
+              // メインの弁士（Speaker）情報を取得する
               const personElem = await schedule.$(".title .person");
               let speakerName = "";
               if (personElem) {
                 speakerName = (await personElem.innerText()).trim();
-                // "志位和夫議長" -> "志位和夫 議長" のようにスペースを入れたい場合もあるが、
-                // 日本共産党の表記に合わせて一旦そのまま取得し、後で調整も可能。
-                // 他のスクレイパーに合わせて役職との間にスペースを入れる処理を入れてみる。
-                // ただし、単純な正規表現では難しいので、一旦そのままにするか、
-                // 既知の役職リストで分離する。
-                // ここでは単純に取得する。
               }
 
-              // 詳細（時間、場所、候補者）を取得
+              // スケジュールの詳細（時刻，場所，同行候補者など）を取得する
               const detailElem = await schedule.$(".detail");
               if (!detailElem) continue;
 
-              // detail内のテキストを行ごとに分割
-              // <br>タグを改行文字に置換してからテキスト取得すると行分割しやすい
-              // <br>タグを改行文字に置換してからテキスト取得すると行分割しやすい
-              // <br> <a ...>...</a> などを処理
-              // <a>タグ（YouTubeリンクなど）は行として分かれていることが多いが、
-              // 同じ行に含まれる場合もあるかもしれない。
-              // 単純に innerText を取得すると <br> は改行になるはず。
               const detailText = await detailElem.innerText();
               const lines = detailText
                 .split("\n")
@@ -75,31 +60,23 @@ export class JCPScraper extends BaseScraper {
                 .filter(l => l);
 
               for (const line of lines) {
-                // "YouTubeで中継" などの行はスキップ
+                // 中継情報などの非演説行をスキップする
                 if (
                   line.includes("YouTubeで中継") ||
                   line.includes("YouTbueで中継")
                 )
                   continue;
-                if (!line.includes("～")) continue; // 時間の区切りがない行はスキップ
+                if (!line.includes("～")) continue;
 
-                // 時間抽出 "13:30～"
+                // 開始時刻を抽出する
                 const timeMatch = line.match(/(\d{1,2}:\d{2})～/);
                 if (!timeMatch) continue;
                 const timeStr = timeMatch[1];
                 const startAt = this.combineDateTime(parsedDate, timeStr);
 
-                // 残りのテキストから場所と候補者を抽出
-                // "13:30～　京都・京都市下京区 JR京都駅前（堀川あきこ比例候補と）"
-                // "13:30～　京都・京都市下京区 JR京都駅前（堀川あきこ比例候補と）"
+                // 時刻以降のテキストから場所名と候補者名を抽出する
                 const content = line.replace(timeMatch[0], "").trim();
-
-                // 括弧内の候補者情報を抽出
-                // 複数の括弧がある場合に対応（例："...（日航ホテル前）（藤野やすふみ比例候補と）"）
                 const candidates: string[] = [];
-
-                // 括弧ブロックを全て抽出して検証
-                // 非貪欲マッチで括弧の中身を取得
                 const parenMatches = content.matchAll(/（(.*?)）/g);
                 const blocksToRemove: string[] = [];
 
@@ -107,39 +84,27 @@ export class JCPScraper extends BaseScraper {
                   const textInParen = match[1];
                   const fullMatch = match[0];
 
-                  // 候補者情報かどうかの判定
-                  // "と" で終わる、または "候補" "議員" が含まれる
+                  // 候補者情報が含まれる括弧（「～と」「～候補」「～議員」等）を特定する
                   if (
                     textInParen.endsWith("と") ||
                     textInParen.includes("候補") ||
                     textInParen.includes("議員")
                   ) {
                     blocksToRemove.push(fullMatch);
-
-                    // "と" を削除
                     const cleanCandidateText = textInParen
                       .replace(/と$/, "")
                       .trim();
 
-                    // "、" で分割
                     const candidateParts = cleanCandidateText.split("、");
                     for (const part of candidateParts) {
                       let name = part.trim();
-                      // 役職・選挙区情報の除去
-
-                      // 1. 選挙区（沖縄1区・など）
+                      // 氏名抽出のために、選挙区や役職の記載を除去する
                       name = name.replace(/(沖縄|東京)\d+区[・]?/g, "");
-
-                      // 2. 選挙タイプ（比例・小選挙区・）
                       name = name.replace(/(比例|小選挙区|選挙区)[・]?/g, "");
-
-                      // 3. 役職・身分（衆院議員・候補・前議員など）
-                      // これらは末尾に来ることが多いので、これ以降を削除
                       name = name.replace(
                         /(衆院|参院|前|元)?(候補|議員).*$/,
                         "",
                       );
-
                       name = name.trim();
 
                       if (name) {
@@ -150,12 +115,11 @@ export class JCPScraper extends BaseScraper {
                 }
 
                 let locationName = content;
-                // 特定された候補者ブロックを場所名から削除
+                // 場所名に含まれる候補者情報の括弧書きを削除する
                 for (const block of blocksToRemove) {
                   locationName = locationName.replace(block, "").trim();
                 }
 
-                // 候補者がいない場合は "（候補者なし）"
                 if (candidates.length === 0) {
                   speeches.push({
                     candidate_name: "（候補者なし）",
@@ -165,7 +129,6 @@ export class JCPScraper extends BaseScraper {
                     speakers: speakerName ? [speakerName] : [],
                   });
                 } else {
-                  // 候補者ごとに作成
                   for (const candidate of candidates) {
                     speeches.push({
                       candidate_name: candidate,
@@ -178,15 +141,15 @@ export class JCPScraper extends BaseScraper {
                 }
               }
             } catch (e) {
-              console.warn("⚠️ JCP schedule parse error:", e);
+              console.warn("⚠️ Failed to parse JCP schedule detail:", e);
             }
           }
         } catch (e) {
-          console.warn("⚠️ JCP section parse error:", e);
+          console.warn("⚠️ Failed to parse JCP section:", e);
         }
       }
     } catch (e) {
-      console.error("❌ JCP total scraping error:", e);
+      console.error("❌ JCP scraping error:", e);
     } finally {
       await browser.close();
     }
@@ -194,8 +157,10 @@ export class JCPScraper extends BaseScraper {
     return speeches;
   }
 
+  /**
+   * 日付文字列を解析し，Date オブジェクトを生成する．
+   */
   private parseDate(text: string): Date | null {
-    // "1月31日（土）" -> Date object
     const now = new Date();
     const currentYear = now.getFullYear();
     const match = text.match(/(\d{1,2})月(\d{1,2})日/);
@@ -205,7 +170,6 @@ export class JCPScraper extends BaseScraper {
     const day = parseInt(match[2], 10);
 
     let year = currentYear;
-    // 年越し対応（現在12月で、取得した月が1月なら来年とみなすなど）
     if (now.getMonth() === 11 && month === 1) {
       year += 1;
     }
@@ -213,6 +177,9 @@ export class JCPScraper extends BaseScraper {
     return new Date(year, month - 1, day);
   }
 
+  /**
+   * 日付オブジェクトと時刻文字列を結合して単一の Date オブジェクトを作成する．
+   */
   private combineDateTime(date: Date, timeStr: string): Date {
     const [hour, minute] = timeStr.split(":").map(Number);
     return new Date(

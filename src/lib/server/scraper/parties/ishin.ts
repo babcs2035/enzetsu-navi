@@ -1,5 +1,8 @@
 import { BaseScraper, type SpeechData } from "../base";
 
+/**
+ * 日本維新の会の公式サイトから演説スケジュールを収集するスクレイパー．
+ */
 export class IshinScraper extends BaseScraper {
   partyName = "日本維新の会";
   baseUrl = "https://o-ishin.jp/schedule/";
@@ -14,14 +17,14 @@ export class IshinScraper extends BaseScraper {
         await page.goto(this.baseUrl, { timeout: 30000 });
       } catch (e) {
         console.warn(
-          `⚠️ Ishin scraping: Failed to access page (${this.baseUrl}):`,
+          `⚠️ Failed to access Ishin schedule page: ${this.baseUrl}`,
           e,
         );
         await browser.close();
         return [];
       }
 
-      // #left 直下の要素を順番に走査して，年とそれに続くスケジュールを取得する
+      // スケジュール情報が格納されている要素を走査し， raw データとして抽出する
       interface RawSpeechData {
         year: number;
         dateRaw: string;
@@ -40,7 +43,7 @@ export class IshinScraper extends BaseScraper {
           let currentYear = new Date().getFullYear();
 
           for (const el of elements) {
-            // 年ごとの見出し (例: <h3 class="h3title">2026年</h3>)
+            // 年別の見出し要素から現在の年を取得し保持する
             if (el.classList.contains("h3title")) {
               const text = el.textContent?.trim() || "";
               const match = text.match(/(\d{4})年/);
@@ -50,27 +53,23 @@ export class IshinScraper extends BaseScraper {
               continue;
             }
 
-            // スケジュールセクション (例: <section class="scheduleBox01">)
+            // スケジュールが記載されたテーブル要素を処理する
             if (el.classList.contains("scheduleBox01")) {
               const rows = el.querySelectorAll("table tr");
               let currentDateStr = "";
 
               for (const row of rows) {
-                // 日付セル (rowspanされている場合がある)
-                // 例: <th>日程</th> (ヘッダー) or <th class="date" rowspan="...">1月31日（土）</th>
                 const thDate = row.querySelector("th.date");
                 if (thDate) {
                   currentDateStr = thDate.textContent?.trim() || "";
                 }
 
-                // 時間
                 const tdTime = row.querySelector("td.time");
-                if (!tdTime) continue; // ヘッダー行などのスキップ
+                if (!tdTime) continue;
 
                 const timeRaw = tdTime.textContent?.trim() || "";
                 if (!currentDateStr || !timeRaw) continue;
 
-                // 場所
                 const tdPlace = row.querySelector("td.place");
                 let placeName = "";
                 let placeAddress = "";
@@ -79,15 +78,12 @@ export class IshinScraper extends BaseScraper {
                   const link = tdPlace.querySelector("a");
                   if (link) {
                     placeName = link.textContent?.trim() || "";
-                    // リンク以外のテキストを住所とする
                     placeAddress = (tdPlace as HTMLElement).innerText
                       .replace(placeName, "")
                       .replace(/[\n\r]+/g, " ")
                       .trim();
                   } else {
-                    // リンクがない場合は改行で分離
-                    const fullText = (tdPlace as HTMLElement).innerText;
-                    const lines = fullText
+                    const lines = (tdPlace as HTMLElement).innerText
                       .split("\n")
                       .map(l => l.trim())
                       .filter(l => l);
@@ -101,19 +97,18 @@ export class IshinScraper extends BaseScraper {
                 }
                 if (!placeName) continue;
 
-                // 弁士・候補者
                 const tdSpieler = row.querySelector("td.spieler");
                 const speakers: string[] = [];
                 const candidates: string[] = [];
 
                 if (tdSpieler) {
-                  // <span>: 弁士 (border囲み)
+                  // 応援弁士（span 要素）の抽出
                   tdSpieler.querySelectorAll("span").forEach(span => {
                     const t = span.textContent?.trim();
                     if (t) speakers.push(t);
                   });
 
-                  // <p>: 候補者 (「弁士：」で始まることが多い)
+                  // 候補者（p 要素）の抽出
                   tdSpieler.querySelectorAll("p").forEach(p => {
                     let text = p.textContent?.trim() || "";
                     if (text.includes("弁士")) {
@@ -147,10 +142,8 @@ export class IshinScraper extends BaseScraper {
         this.baseUrl,
       );
 
-      // Node.js側でDateオブジェクト化などの最終加工
+      // 抽出した raw データを正規化して演説データ配列へ格納する
       for (const data of rawSpeeches) {
-        // currentDateStr 例: "2月 1日（日）"
-        // 文字に依存せず、連続する数値2つを月・日として抽出する
         const dateMatch = data.dateRaw.match(/(\d{1,2})\D+(\d{1,2})/);
         if (dateMatch) {
           const month = Number.parseInt(dateMatch[1], 10);
@@ -165,7 +158,6 @@ export class IshinScraper extends BaseScraper {
             !Number.isNaN(h) &&
             !Number.isNaN(m)
           ) {
-            // data.year を使用して日時を作成 (monthは0-indexed)
             const startAt = new Date(data.year, month - 1, day, h, m);
 
             for (const candidate of data.candidates) {
@@ -182,12 +174,12 @@ export class IshinScraper extends BaseScraper {
         }
       }
     } catch (e) {
-      console.error("❌ Ishin total scraping error:", e);
+      console.error("❌ Ishin scraping error:", e);
     } finally {
       await browser.close();
     }
 
-    // 重複除去
+    // 重複する演説データを除去する
     const uniqueSpeeches = new Map<string, SpeechData>();
     for (const speech of speeches) {
       const key = `${speech.start_at.toISOString()}_${speech.candidate_name}_${speech.location_name}`;

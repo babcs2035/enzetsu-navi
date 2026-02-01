@@ -12,12 +12,13 @@ interface SidebarProps {
 
 /**
  * サイドバーコンポーネント．
- * 演説リストを表示するためのコンテナとして機能し，モバイル表示時のオーバーレイも管理する．
+ * 演説リストおよび詳細情報を表示するためのコンテナとして機能する．
+ * モバイル表示時はドロワーとして動作し，オーバーレイの管理も行う．
  */
 export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
   return (
     <>
-      {/* モバイル用オーバーレイ */}
+      {/* モバイル表示時の背面オーバーレイ */}
       {isOpen && (
         <Box
           position="fixed"
@@ -29,7 +30,7 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
         />
       )}
 
-      {/* サイドバー本体 */}
+      {/* サイドバー本体のレイアウト定義 */}
       <Box
         as="aside"
         position={{ base: "fixed", lg: "relative" }}
@@ -52,12 +53,11 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
         display={isOpen ? "flex" : { base: "flex", lg: "none" }}
         flexDirection="column"
       >
-        {/* モバイル用ヘッダー */}
+        {/* モバイル表示時にのみ表示されるヘッダーエリア */}
         <Flex
           align="center"
           justify="space-between"
           p={4}
-          className=""
           borderBottom="1px solid"
           borderColor="gray.200"
           display={{ lg: "none" }}
@@ -77,7 +77,7 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
           </IconButton>
         </Flex>
 
-        {/* コンテンツ */}
+        {/* サイドバー内部のスクロール可能なコンテンツエリア */}
         <Box flex={1} overflow="hidden">
           {children}
         </Box>

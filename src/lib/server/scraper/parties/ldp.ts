@@ -1,5 +1,8 @@
 import { BaseScraper, type SpeechData } from "../base";
 
+/**
+ * 自由民主党の公式サイトから演説スケジュールを収集するスクレイパー．
+ */
 export class LDPScraper extends BaseScraper {
   partyName = "自由民主党";
   baseUrl = "https://www.jimin.jp/election/sen_shu51/speech/index.html";
@@ -15,14 +18,14 @@ export class LDPScraper extends BaseScraper {
         await page.goto(this.baseUrl, { timeout: 30000 });
       } catch (e) {
         console.warn(
-          `⚠️ LDP scraping: Failed to access page (${this.baseUrl}):`,
+          `⚠️ Failed to access LDP schedule page: ${this.baseUrl}`,
           e,
         );
         await browser.close();
         return [];
       }
 
-      // 役員ごとのブロックを取得する．
+      // 党役員ごとのブロックを取得する
       const memberBlocks = await page.$$(".speech-member");
 
       for (const block of memberBlocks) {
@@ -30,14 +33,13 @@ export class LDPScraper extends BaseScraper {
           const memberNameElem = await block.$(".member_name");
           let officerName = "";
           if (memberNameElem) {
-            // evaluate を使って DOM 操作し，rt タグを削除してからテキスト取得する．
+            // Ruby（ふりがな）タグを除いて役員の氏名を取得する
             officerName = await memberNameElem.evaluate(el => {
               const clone = el.cloneNode(true) as HTMLElement;
               const rts = clone.querySelectorAll("rt");
               rts.forEach(rt => {
                 rt.remove();
               });
-              // 全角スペース等も全て削除せず、半角スペースに正規化して残す
               return (clone.textContent || "").trim().replace(/\s+/g, " ");
             });
           }
@@ -56,41 +58,37 @@ export class LDPScraper extends BaseScraper {
 
             for (const row of rows) {
               try {
-                // 時間の取得を行う (th)．
+                // 開始時刻を取得する
                 const timeElem = await row.$("th");
                 if (!timeElem) continue;
                 const timeText = (await timeElem.innerText()).trim();
                 const startAt = this.parseDateTime(`${dateStr} ${timeText}`);
                 if (!startAt) continue;
 
-                // 情報の取得を行う (.speech-table_info p)．
+                // 演説情報（候補者，場所等）を取得する
                 const infoParams = await row.$$(".speech-table_info p");
                 const candidateNames: string[] = [];
-                let locationName = "";
+                const locationInfos: string[] = [];
 
                 const normalizeText = (text: string) => {
                   return text
                     .replace(/【.*?】/g, "")
-                    .replace(/[（(].*?[）)]/g, "") // 全角・半角括弧に対応する．
-                    .replace(/\s/g, ""); // すべての空白を削除する．
+                    .replace(/[（(].*?[）)]/g, "")
+                    .replace(/\s/g, "");
                 };
-
-                const locationInfos: string[] = [];
 
                 for (const p of infoParams) {
                   const text = (await p.innerText()).trim();
                   const link = await p.$("a");
+                  // リンクが存在する場合は候補者名，ない場合は場所・住所として扱う
                   if (link) {
-                    // リンクがある場合は候補者名とみなす．
                     candidateNames.push(normalizeText(text));
                   } else {
-                    // リンクがない場合は場所・住所情報とみなす．
                     locationInfos.push(normalizeText(text));
                   }
                 }
 
-                locationName = locationInfos[0] || "";
-                // 2つ目以降の情報があれば住所として扱う
+                const locationName = locationInfos[0] || "";
                 let address = "";
                 if (locationInfos.length > 1) {
                   address = locationInfos.slice(1).join(" ");
@@ -101,11 +99,10 @@ export class LDPScraper extends BaseScraper {
                   speakers.push(officerName);
                 }
 
-                // 場所名がない場合はスキップする．
                 if (!locationName) continue;
 
-                // 候補者が複数いる場合は分割して登録する．
                 if (candidateNames.length > 0) {
+                  // 特定された全候補者の演説データを作成する
                   for (const name of candidateNames) {
                     if (!name) continue;
                     speeches.push({
@@ -118,7 +115,7 @@ export class LDPScraper extends BaseScraper {
                     });
                   }
                 } else if (officerName) {
-                  // 候補者がいない場合は役員を候補者として登録する．
+                  // 候補者がリンクで特定できない場合は役員自身を暫定的な候補者とする
                   speeches.push({
                     candidate_name: officerName,
                     start_at: startAt,
@@ -129,18 +126,18 @@ export class LDPScraper extends BaseScraper {
                   });
                 }
               } catch (e) {
-                console.warn("⚠️ LDP row parse error:", e);
+                console.warn("⚠️ Failed to parse LDP schedule row:", e);
               }
             }
           }
         } catch (e) {
-          console.warn("⚠️ LDP block parse error:", e);
+          console.warn("⚠️ Failed to parse LDP member block:", e);
         }
       }
 
       await browser.close();
     } catch (e) {
-      console.error("❌ LDP total scraping error:", e);
+      console.error("❌ LDP scraping error:", e);
     }
 
     return speeches;

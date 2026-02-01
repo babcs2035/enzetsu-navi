@@ -9,89 +9,97 @@ import { useStore } from "@/store/useStore";
 
 /**
  * タイムスライダーコンポーネント．
- * 時刻の制御や日付モードの切り替え，自動再生機能を提供する．
+ * 基準時刻の変更，自動再生，日付フィルタ（本日・これから・全期間）の切り替え制御を行う．
  */
 export function TimeSlider() {
   const { selectedTime, setSelectedTime, isLoading, filter, setFilter } =
     useStore();
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // 選択中の日付モード（today, upcoming, all）を取得する．
-  // "today" が通常のタイムスライダー有効モードとして機能する．
+  // 現在の日付フィルタモードを取得する
   const currentMode = filter.dateMode;
 
-  // 今日の開始と終了の日時を取得する．
-  const dayStart = startOfDay(selectedTime); // selectedTime の日の 0 時
-  const dayEnd = endOfDay(selectedTime); // selectedTime の日の 23:59
+  // 選択日（当日）の開始時刻と終了時刻を算出する
+  const dayStart = startOfDay(selectedTime);
+  const dayEnd = endOfDay(selectedTime);
 
-  // スライダーの値（分単位）を計算する．
+  /**
+   * Date オブジェクトをスライダーの分単位の値に変換する．
+   */
   const getSliderValue = useCallback(
     (date: Date) => {
       const start = dayStart.getTime();
       const current = date.getTime();
-      return Math.floor((current - start) / (1000 * 60)); // 分単位
+      return Math.floor((current - start) / (1000 * 60));
     },
     [dayStart],
   );
 
   const sliderValue = getSliderValue(selectedTime);
-  const maxValue = 24 * 60; // 1日 = 1440 分
+  const maxValue = 24 * 60; // 1 日分（1440 分）を最大値とする
 
-  // スライダーの変更時のハンドラ．
+  /**
+   * スライダーの操作に合わせて選択時刻を更新する．
+   */
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const minutes = parseInt(e.target.value, 10);
     const newTime = new Date(dayStart.getTime() + minutes * 60 * 1000);
     setSelectedTime(newTime);
   };
 
-  // 指定した時間だけ時刻を移動する．
+  /**
+   * 指定されたステップ数（30 分単位）だけ時刻を前後させる．
+   */
   const moveTime = (steps: number) => {
-    // 30分単位で移動
     const minutes = steps * 30;
     const newTime = addMinutes(selectedTime, minutes);
 
-    // 範囲内（当日中）に制限する．
+    // 同日内の範囲に収まる場合のみ更新する
     if (newTime >= dayStart && newTime <= dayEnd) {
       setSelectedTime(newTime);
     }
   };
 
-  // 現在時刻に移動し，モードを "today" に切り替える．
+  /**
+   * モードを「本日」に切り替え，時刻を現在時刻に設定する．
+   */
   const goToNow = () => {
     const now = new Date();
     setFilter({ dateMode: "today" });
     setSelectedTime(now);
   };
 
-  // 日付モードを切り替える．
+  /**
+   * 日付フィルタモードを切り替える．
+   */
   const handleModeChange = (mode: "today" | "upcoming" | "all") => {
     setFilter({ dateMode: mode });
     if (mode === "today") {
-      setSelectedTime(new Date()); // 今日：現在時刻へ設定する．
+      setSelectedTime(new Date());
     }
-    // その他のモードではサーバー側で適切なフィルタリングが行われるため，クライアント側での時間設定は必須ではない．
-    // ただし，ユーザーに現在時刻を意識させるため，"today" では現在時刻にリセットする．
   };
 
-  // 自動再生機能．
+  /**
+   * 自動再生機能の制御ロジック．
+   */
   useEffect(() => {
     if (!isPlaying) return;
 
     const interval = setInterval(() => {
       const current = useStore.getState().selectedTime;
-      const next = addMinutes(current, 30); // 30分進める
+      const next = addMinutes(current, 30);
       if (next > dayEnd) {
         setIsPlaying(false);
         setSelectedTime(dayStart);
       } else {
         setSelectedTime(next);
       }
-    }, 1500); // 1.5秒ごとに進める
+    }, 1500);
 
     return () => clearInterval(interval);
   }, [isPlaying, dayEnd, dayStart, setSelectedTime]);
 
-  // タイムスライダーを表示するかどうかを判定する．
+  // 本日モードのみ時刻操作コントロールを表示する
   const showTimeControls = currentMode === "today";
 
   return (
@@ -105,7 +113,7 @@ export function TimeSlider() {
       boxShadow="lg"
       position="relative"
     >
-      {/* モード切り替えタブ */}
+      {/* 期間選択タブ */}
       <Flex bg="gray.100" p={1} borderRadius="lg" mb={showTimeControls ? 4 : 0}>
         <Button
           flex={1}
@@ -151,6 +159,7 @@ export function TimeSlider() {
       {showTimeControls && (
         <>
           <Flex align="center" gap={3} mb={2}>
+            {/* 再生・一時停止ボタン */}
             <IconButton
               aria-label={isPlaying ? "停止" : "再生"}
               onClick={() => setIsPlaying(!isPlaying)}
@@ -179,11 +188,12 @@ export function TimeSlider() {
                   {format(selectedTime, "HH:mm", { locale: ja })}
                 </Text>
                 <Text fontSize="xs" color="gray.500">
-                  {format(selectedTime, "M/d(E)", { locale: ja })}
+                  {format(selectedTime, "M/d (E)", { locale: ja })}
                 </Text>
               </Flex>
             </Box>
 
+            {/* 時刻微調整・リセットボタン群 */}
             <Flex align="center" gap={1}>
               <IconButton
                 aria-label="30分前"
@@ -223,7 +233,7 @@ export function TimeSlider() {
             </Flex>
           </Flex>
 
-          {/* スライダー */}
+          {/* シーバースライダー */}
           <Box>
             <input
               type="range"
@@ -238,7 +248,7 @@ export function TimeSlider() {
         </>
       )}
 
-      {/* ローディング表示 */}
+      {/* 非同期読み込み中のオーバーレイ */}
       {isLoading && (
         <Flex
           position="absolute"

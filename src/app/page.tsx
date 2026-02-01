@@ -3,15 +3,19 @@
 import { Box, Dialog, Flex, Spinner, Text, VStack } from "@chakra-ui/react";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import {
+  Footer,
+  Header,
+  Sidebar,
+  SpeechList,
+  Stats,
+  TermsDialog,
+  TimeSlider,
+} from "@/components";
 import { FilterPanel } from "@/components/FilterPanel";
-import { Header } from "@/components/Header";
-import { Sidebar } from "@/components/Sidebar";
-import { SpeechList } from "@/components/SpeechList";
-import { Stats } from "@/components/Stats";
-import { TimeSlider } from "@/components/TimeSlider";
 import { useStore } from "@/store/useStore";
 
-// MapLibre は SSR と互換性がないため，動的インポートを使用する．
+// MapLibre は SSR と互換性がないため，動的インポートを使用してクライアントサイドでのみ読み込む
 const MapView = dynamic(
   () => import("@/components/MapView").then(mod => mod.MapView),
   {
@@ -29,43 +33,55 @@ const MapView = dynamic(
 
 /**
  * ホームページコンポーネント．
- * 地図，リスト，フィルターなどの主要コンポーネントを統合し，メインの UI を構成する．
+ * アプリケーションのメインエントリポイントであり，地図，演説リスト，
+ * タイムスライダー，フィルタパネルなどの各コンポーネントをレイアウト・統合する．
  */
 export default function HomePage() {
   const fetchParties = useStore(state => state.fetchParties);
-  const fetchSpeeches = useStore(state => state.fetchSpeeches);
+  const fetchSpeechesByTime = useStore(state => state.fetchSpeechesByTime);
   const fetchStats = useStore(state => state.fetchStats);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isFirstAccess, setIsFirstAccess] = useState(false);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 初期化時のみ実行するため dependency array は空とする．
+  /**
+   * コンポーネントマウント時に初期データの取得および環境に応じた初期状態設定を行う．
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 初期化時のみ実行するため dependency array は空とする
   useEffect(() => {
-    // 初期データの取得を行う．
     fetchParties();
-    fetchSpeeches();
+    fetchSpeechesByTime(new Date());
     fetchStats();
 
-    // デスクトップ環境（lg以上）の場合はサイドバーを開く
+    // デスクトップ環境（lg 以上）の場合は演説リストをデフォルトで表示する
     if (window.matchMedia("(min-width: 992px)").matches) {
       setIsSidebarOpen(true);
+    }
+
+    // 利用規約の同意状況を確認する
+    const hasAgreed = localStorage.getItem("has-agreed-to-terms");
+    if (!hasAgreed) {
+      setIsFirstAccess(true);
+      setIsTermsOpen(true);
     }
   }, []);
 
   return (
     <Flex direction="column" h="100vh" overflow="hidden" bg="gray.50">
-      {/* ヘッダーを表示する． */}
+      {/* 画面上部の共通ヘッダー */}
       <Header
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onToggleFilter={() => setIsFilterOpen(!isFilterOpen)}
       />
 
       <Flex flex={1} overflow="hidden">
-        {/* メインコンテンツ（地図）を表示する． */}
+        {/* メインの地図表示エリア */}
         <Box flex={1} position="relative">
           <MapView />
 
-          {/* タイムスライダーを表示する． */}
+          {/* 画面下部の時間操作スライダー */}
           <Box
             position="absolute"
             bottom={6}
@@ -79,12 +95,12 @@ export default function HomePage() {
             <TimeSlider />
           </Box>
 
-          {/* 統計情報を表示する． */}
+          {/* 画面左上の統計情報パネル */}
           <Box position="absolute" top={4} left={4} zIndex={10}>
             <Stats />
           </Box>
 
-          {/* フィルターモーダルを表示する． */}
+          {/* 政党の絞り込み用モーダルダイアログ */}
           <Dialog.Root
             open={isFilterOpen}
             onOpenChange={e => setIsFilterOpen(e.open)}
@@ -122,17 +138,33 @@ export default function HomePage() {
           </Dialog.Root>
         </Box>
 
-        {/* サイドバー（演説リスト）を表示する． */}
+        {/* 画面右側（またはモバイル表示時はオーバーレイ）の演説リストサイドバー */}
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}>
-          <SpeechList
-            onSelect={() => {
-              if (window.matchMedia("(max-width: 991px)").matches) {
-                setIsSidebarOpen(false);
-              }
-            }}
-          />
+          <Flex direction="column" h="full">
+            <Box flex={1} overflow="hidden">
+              <SpeechList
+                onSelect={() => {
+                  // モバイル表示時はアイテム選択時に自動的にサイドバーを閉じる
+                  if (window.matchMedia("(max-width: 991px)").matches) {
+                    setIsSidebarOpen(false);
+                  }
+                }}
+              />
+            </Box>
+            <Footer onOpenTerms={() => setIsTermsOpen(true)} />
+          </Flex>
         </Sidebar>
       </Flex>
+
+      {/* 利用規約ダイアログ */}
+      <TermsDialog
+        isOpen={isTermsOpen}
+        onClose={() => {
+          setIsTermsOpen(false);
+          setIsFirstAccess(false);
+        }}
+        isFirstAccess={isFirstAccess}
+      />
     </Flex>
   );
 }

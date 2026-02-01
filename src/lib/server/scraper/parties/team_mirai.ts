@@ -1,17 +1,19 @@
 import { BaseScraper, type SpeechData } from "../base";
 
+/**
+ * 「チームみらい」の公式サイトから演説スケジュールを収集するスクレイパー．
+ * スケジュール詳細に含まれる X (旧 Twitter) のリンクを辿り，氏名を補完する．
+ */
 export class TeamMiraiScraper extends BaseScraper {
   partyName = "チームみらい";
   baseUrl = "https://team-mir.ai/";
 
-  // URLと名前のキャッシュ
   private nameCache: Record<string, string> = {};
 
   async scrape(): Promise<SpeechData[]> {
     const speeches: SpeechData[] = [];
     const browser = await this.getBrowser();
 
-    // X対策としてUser-Agentを設定したコンテキストを使用
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
@@ -34,47 +36,36 @@ export class TeamMiraiScraper extends BaseScraper {
           waitUntil: "networkidle",
         });
       } catch (e) {
-        console.warn(
-          `⚠️ TeamMirai scraping: Failed to access page (${this.baseUrl}):`,
-          e,
-        );
+        console.warn(`⚠️ Failed to access TeamMirai page: ${this.baseUrl}`, e);
         return [];
       }
 
-      // スケジュールセクションのロード待機
       try {
         await page.waitForSelector("#schedule", {
           state: "visible",
           timeout: 10000,
         });
       } catch (_e) {
-        console.warn(
-          "⚠️ Timeout waiting for #schedule selector, trying to parse anyway",
-        );
+        // セレクター待機タイムアウト時はそのまま続行を試みる
       }
 
-      // 日付グループごとの処理
+      // 日付グループ要素を走査する
       const dateGroups = await page.$$("#schedule .event-date-group");
 
       for (const group of dateGroups) {
-        // 日付取得 "1/31(土)"
         const header = await group.$(".event-date-header");
-        if (!header) {
-          continue;
-        }
+        if (!header) continue;
         const dateText = (await header.innerText()).trim();
         const date = this.parseDate(dateText);
         if (!date) continue;
 
-        // カードごとの処理
+        // 各日付グループ内のイベントカードを処理する
         const cards = await group.$$(".event-card");
         for (const card of cards) {
-          // 時間 "10:30"
           const timeElem = await card.$(".event-time");
           if (!timeElem) continue;
           const timeText = (await timeElem.innerText()).trim();
 
-          // 場所
           const locElem = await card.$(".event-location");
           let location = "";
           if (locElem) {
@@ -82,7 +73,7 @@ export class TeamMiraiScraper extends BaseScraper {
           }
           if (!location) continue;
 
-          // Xリンク
+          // X (旧 Twitter) へのリンクを取得する
           const linkElem = await card.$(
             ".event-sns a[href*='x.com'], .event-sns a[href*='twitter.com']",
           );
@@ -98,7 +89,7 @@ export class TeamMiraiScraper extends BaseScraper {
       }
       await page.close();
 
-      // Xのプロフィール名を取得（ユニークなURLのみアクセス）
+      // 各演説者の X プロフィールから氏名を抽出・補完する
       const uniqueUrls = [...new Set(eventItems.map(i => i.xUrl))];
       for (const url of uniqueUrls) {
         if (this.nameCache[url]) continue;
@@ -114,14 +105,11 @@ export class TeamMiraiScraper extends BaseScraper {
               waitUntil: "domcontentloaded",
             });
 
-            // 少し長めに待機してJSの実行を待つ
             await profilePage.waitForTimeout(4000);
 
-            // 名前候補の取得試行
             let candidateTitle = "";
 
-            // 1. OGPタグ（最優先）
-            // <meta property="og:title" content="名前 (@id) / X">
+            // OGP タイトルから氏名抽出を試みる
             const ogTitle = await profilePage
               .$eval('meta[property="og:title"]', el =>
                 el.getAttribute("content"),
@@ -131,8 +119,7 @@ export class TeamMiraiScraper extends BaseScraper {
             if (ogTitle) {
               candidateTitle = ogTitle;
             } else {
-              // 2. DOM要素（data-testid="UserName"）
-              // 構造: <div data-testid="UserName">...<span><span>名前</span></span>...</div>
+              // DOM の UserName 要素から抽出を試みる
               const userNameElem = await profilePage.$(
                 'div[data-testid="UserName"] span span',
               );
@@ -141,39 +128,31 @@ export class TeamMiraiScraper extends BaseScraper {
                 if (text) candidateTitle = text;
               }
 
-              // 3. 通常のTitleタグ
               if (!candidateTitle) {
                 candidateTitle = await profilePage.title();
               }
             }
 
-            // 名前のクリーニング
             let name = candidateTitle;
             if (name) {
-              // "名前 (@id)..." 形式の処理
               if (name.includes("(@")) {
                 name = name.split("(@")[0].trim();
               }
-              // " on X"
               if (name.includes(" on X")) {
                 name = name.split(" on X")[0].trim();
               }
-              // 末尾の / X
               name = name.replace(/ \/ (X|Twitter)$/, "").trim();
             }
 
-            // 無効判定
             if (
               !name ||
               name === "X" ||
               name === "Profile" ||
               name === "プロフィール"
             ) {
-              // 失敗、リトライへ
-              // console.warn(`⚠️ Attempt ${attempt + 1}: Invalid title parsed: "${candidateTitle}" from ${url}`);
+              // 有効なタイトルが取れなかった場合はリトライ
             } else {
-              // 有効な名前が取れた
-              // さらに整形
+              // 不要な記号や ID 部分を除去して純粋な氏名を得る
               const clean = name.split(/[\s　@＠|｜/／(（【[<＜\-:：・]/)[0];
               if (
                 clean &&
@@ -182,14 +161,13 @@ export class TeamMiraiScraper extends BaseScraper {
                 clean !== "プロフィール"
               ) {
                 fetchedName = clean;
-                break; // 成功、ループ抜ける
+                break;
               }
             }
           } catch (e) {
             console.warn(`⚠️ Attempt ${attempt + 1} failed for ${url}:`, e);
           } finally {
             await profilePage.close();
-            // リトライ間隔
             if (!fetchedName && attempt < maxRetries - 1) {
               await new Promise(r => setTimeout(r, 2000));
             }
@@ -198,16 +176,15 @@ export class TeamMiraiScraper extends BaseScraper {
 
         if (fetchedName) {
           this.nameCache[url] = fetchedName;
-          console.log(`👤 Fetched X profile: ${fetchedName} from ${url}`);
+          console.log(`👤 Fetched X profile: ${fetchedName} (${url})`);
         } else {
-          // 最終フォールバック
           const urlParts = url.split("/");
           const id = urlParts[urlParts.length - 1];
           this.nameCache[url] = id || "チームみらい弁士";
         }
       }
 
-      // データの組み立て
+      // 収集・補完したデータを使って Speech データ配列を組み立てる
       for (const item of eventItems) {
         const startAt = this.combineDateTime(item.date, item.time);
         const candidateName = this.nameCache[item.xUrl] || "チームみらい弁士";
@@ -221,7 +198,7 @@ export class TeamMiraiScraper extends BaseScraper {
         });
       }
     } catch (e) {
-      console.error("❌ TeamMirai total scraping error:", e);
+      console.error("❌ TeamMirai scraping error:", e);
     } finally {
       await context.close();
       await browser.close();
@@ -230,6 +207,9 @@ export class TeamMiraiScraper extends BaseScraper {
     return speeches;
   }
 
+  /**
+   * 日付文字列（例：「1 / 31」）を解析し， Date オブジェクトを生成する．
+   */
   private parseDate(text: string): Date | null {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -247,6 +227,9 @@ export class TeamMiraiScraper extends BaseScraper {
     return new Date(year, month - 1, day);
   }
 
+  /**
+   * 日付オブジェクトと時刻文字列を結合して単一の Date オブジェクトを作成する．
+   */
   private combineDateTime(date: Date, timeStr: string): Date {
     const [hour, minute] = timeStr.split(":").map(Number);
     return new Date(

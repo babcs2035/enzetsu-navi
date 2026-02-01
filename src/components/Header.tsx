@@ -11,7 +11,7 @@ interface HeaderProps {
 
 /**
  * ヘッダーコンポーネント．
- * アプリケーションのタイトルと，サイドバー・フィルターの切り替えボタンを表示する．
+ * アプリケーションのロゴ，検索ボックス，およびサイドバー・フィルターパネルの表示制御ボタンを配置する．
  */
 export function Header({ onToggleSidebar, onToggleFilter }: HeaderProps) {
   return (

@@ -1,122 +1,90 @@
-# 街頭演説ナビ (Enzetsu Navi)
+# 街頭演説ナビ
 
-日本の国政選挙において，各党・候補者の街頭演説場所を地図上にリアルタイム（1 時間更新）で可視化する Web アプリケーションである．
-ユーザーは，現在地や指定した日時に開催される演説を直感的に把握できる．
+日本の国政選挙において，各党・候補者の街頭演説場所を地図上にリアルタイムで可視化する Web アプリケーションである．
+ユーザーは，現在地や指定した日時に開催される演説情報を直感的に把握できる．
 
 ## 🚀 主な機能
 
 - **🗺️ インタラクティブな地図表示**
-  - MapLibre GL JS を使用し，スムーズな地図操作を実現している．
-  - GPS を利用して現在地周辺の演説を素早く確認できる．
-- **🕒 タイムスライダー**
-  - 過去から未来の演説スケジュールを，スライダー操作で時間軸に沿って確認できる．
-  - 自動再生機能により，時系列での演説状況の変化を視覚的に追跡できる．
-- **🤖 自動データ収集（スクレイピング）**
-  - Playwright を使用し，主要政党の公式サイトから演説情報を 1 時間ごとに自動取得する．
-  - 取得した情報は OpenAI API または Google Places API を用いてジオコーディング（住所から座標への変換）され，地図上にマッピングされる．
-- **🔍 フィルタリング**
-  - 特定の政党や候補者に絞って表示することができる．
-- **📊 統計情報の表示**
-  - 登録されている全演説数や，座標特定済みのデータ数などをリアルタイムで表示する．
+  - MapLibre GL JS を採用し，高速かつ滑らかな地図操作を実現している．
+  - GPS を利用した現在地表示機能により，周辺で開催される演説を素早く確認できる．
+  - 政党ごとに色分けされたマーカーにより，開催場所を一目で判別できる．
+- **🕒 タイムスライダーによる時間軸操作**
+  - 過去から未来までの演説スケジュールを，スライダー操作でシームレスに切り替えられる．
+  - 自動再生機能により，時間の経過に伴う演説場所の変化を視覚的に追跡できる．
+- **🤖 自動データ収集 (スクレイピング) パイプライン**
+  - 主要政党の公式サイトから，Playwright を用いて最新の演説スケジュールを定期的 (1 時間ごと) に自動取得する．
+  - 収集したテキストデータから，Google Places API を用いて位置情報 (緯度・経度) を抽出し，データベースへ保存する．
+- **🔍 柔軟なフィルタリングと検索**
+  - 政党ごとの絞り込み表示に加え，候補者名や弁士名によるキーワード検索が可能である．
+
+## 📜 利用規約・免責事項
+
+本サービスは非営利の個人プロジェクトであり，情報の正確性について一切の保証を行わない．
+サービスを利用する際は，必ず利用規約・免責事項・プライバシーポリシーを確認し，同意の上で利用すること．
+（※本サービスは Google Maps Platform のデータを利用しています．）
 
 ## 🛠️ 技術スタック
 
-本プロジェクトでは，パフォーマンス，型安全性，開発効率を重視したモダンな技術選定を行っている．
-
 ### フロントエンド
-- **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **State Management**: [Zustand](https://github.com/pmndrs/zustand)
-- **UI Components**: [Chakra UI](https://chakra-ui.com/), [Lucide React](https://lucide.dev/)
-- **Map Library**: [MapLibre GL JS](https://maplibre.org/)
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **State Management**: Zustand (ストアによるグローバル状態管理)
+- **UI Components**: Chakra UI, Lucide React (アイコン)
+- **Map Library**: MapLibre GL JS, OpenStreetMap
 
 ### バックエンド / インフラ
-- **Server Actions**: Next.js 組み込みの API レイヤーを使用．
-- **Database**: [PostgreSQL](https://www.postgresql.org/)
-- **ORM**: [Prisma](https://www.prisma.io/)
-- **Scraping**: [Playwright](https://playwright.dev/)
-- **Job Scheduling**: `node-cron` による定期実行（スクレイピングタスク）．
+- **Runtime**: Node.js (Next.js Server Actions)
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+- **Scraping**: Playwright (ブラウザ自動操作によるデータ抽出)
+- **Job Scheduling**: `node-cron` を用いたバックグラウンドタスクの実行
 - **Geocoding**: Google Maps Platform (Places API)
 - **Containerization**: Docker, Docker Compose
 
-### 開発ツール / CI
-- **Linter/Formatter**: [Biome](https://biomejs.dev/) - 高速なリンター・フォーマッターとして採用．
-- **Task Runner**: [mise](https://mise.jdx.dev/) - ツールバージョン管理およびタスクランナー．
-- **CI/CD**: GitHub Actions (Lint, TypeCheck, Build, Deploy)
+### 開発・品質管理
+- **Linter/Formatter**: Biome
+- **Task Runner**: mise
+- **Type Check**: TypeScript Compiler (tsc)
+
+## 🏗️ 詳細仕様とアーキテクチャ
+
+### 1. スクレイピングとデータ処理
+定期実行されるスクレイパーが各政党の公式サイトを巡回し，演説情報を収集する．取得した情報は以下のプロセスで処理される．
+- **正規化**: 日時や住所情報の形式を統一し，重複データのチェックを行う．
+- **ジオコーディング**: 住所文字列から Google Places API を用いて座標を取得する．
+
+### 2. 状態管理とフィルタリング
+Zustand ストアにより，地図の表示期間，選択中の政党，検索クエリなどの状態を一元管理している．
+- **動的フィルタリング**: 地図上のマーカーとサイドバーのリストは，ストアの状態変更を検知して即座に同期される．
+- **時間軸制御**: タイムスライダーの選択値に基づき，その時刻の前後 1 時間以内に開催される演説を抽出して表示する．
+
+### 3. 地図描画の最適化
+数多くの演説データを効率的に表示するため，MapLibre GL JS を用いたクライアントサイドレンダリングを採用している．パフォーマンを損なうことなく，大量のピンを地図上に配置可能である．
 
 ## 📂 ディレクトリ構成
 
 ```bash
 src/
-├── actions/       # Server Actions（データ取得，スクレイピング実行などのバックエンドロジック）
-├── app/           # Next.js App Router のページ定義
-├── components/    # 再利用可能な UI コンポーネント
-│   ├── FilterPanel.tsx # 政党フィルタリング用パネル
-│   ├── MapView.tsx     # 地図表示コンポーネント（MapLibre）
-│   ├── SpeechList.tsx  # 演説リスト表示コンポーネント
-│   └── ...
-├── lib/           # ユーティリティ，定数，API クライアント設定
-│   ├── server/    # サーバーサイド専用ロジック（スクレイパー，ジオコーディング）
-│   └── ...
-├── store/         # Zustand によるグローバル状態管理（フィルター設定など）
+├── actions/       # Server Actions (データベース操作，外部 API 連携)
+├── app/           # Next.js App Router ページ定義・スタイル
+├── components/    # UI コンポーネント (地図，フィルター，リスト，スライダー等)
+├── lib/           # 共有ライブラリ，ユーティリティ，定数
+│   ├── server/    # サーバーサイド専用ロジック (スクレイパー，ジオコーディング)
+├── store/         # Zustand ストア定義
 └── types/         # TypeScript 型定義
 ```
 
 ## 💻 開発環境セットアップ
 
-本プロジェクトでは `mise` を使用してツールバージョンを管理している．
-
 ### 前提条件
+- `mise` (推奨)，Node.js，pnpm，および Docker がインストールされていること．
 
-- [mise](https://mise.jdx.dev/) (推奨)，または Node.js, pnpm, Docker がインストールされていること．
-
-### セットアップ手順
-
-1. **リポジトリのクローン**
-   ```bash
-   git clone <repository-url>
-   cd enzetsu-navi-frontend
-   ```
-
-2. **依存関係のインストール**
-   ```bash
-   mise install
-   pnpm install
-   ```
-
-3. **環境変数の設定**
-   `.env.sample` を `.env` にコピーし，必要な値を設定する．
-   ```bash
-   cp .env.sample .env
-   ```
-   - `DATABASE_URL`: PostgreSQL への接続 URL．
-   - `GOOGLE_PLACES_API_KEY`: ジオコーディングに使用する Google Maps API キー（必須）．
-
-4. **開発サーバーの起動**
-   ```bash
-   mise dev
-   ```
-   - Docker で PostgreSQL コンテナが起動し，マイグレーションが適用される．
-   - Next.js の開発サーバーがポート 3000 で起動する．
-   - 初回起動時に自動的にスクレイピングタスクが実行される．
-
-5. **アクセスの確認**
-   ブラウザで `http://localhost:3000/enzetsu-navi` にアクセスする．
-
-### その他のコマンド
-
-- **Lint & Format**: `mise run lint` (Biome を実行)
-- **Type Check**: `mise run check` (TypeScript の型チェックを実行)
-- **Docker Production Run**: `mise run docker` (本番環境同様の構成で Docker を起動)
+### セットアップ
+1. **依存関係の導入**: `mise install` および `pnpm install` を実行する．
+2. **環境設定**: `.env.sample` を `.env` に複製し，`DATABASE_URL` と `GOOGLE_PLACES_API_KEY` を設定する．
+3. **起動**: `mise dev` を実行すると，Docker コンテナの起動，マイグレーションの適用，開発サーバーの立ち上げが自動で行われる．
+4. **アクセス**: `http://localhost:3000/enzetsu-navi` をブラウザで開く．
 
 ## 🚀 デプロイ
-
-GitHub Actions を利用して VPS 等への自動デプロイパイプラインを構築している．
-
-1. **コンテナイメージのビルド**: `main` ブランチへのプッシュをトリガーに Docker イメージをビルドする．
-2. **レジストリへのプッシュ**: GitHub Container Registry (ghcr.io) へイメージをプッシュする．
-3. **デプロイ**: SSH 経由でサーバーに接続し，`docker-compose` を用いて最新のイメージを展開する．
-
-## 📄 ライセンス
-
-MIT License
+GitHub Actions を通じたコンテナベースのデプロイフローを導入している．`main` ブランチへのプッシュにより，自動的にイメージのビルドとレジストリへのプッシュ，およびサーバーへの展開が行われる．

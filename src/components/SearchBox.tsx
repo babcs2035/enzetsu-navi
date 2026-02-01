@@ -10,6 +10,10 @@ interface Suggestion {
   name: string;
 }
 
+/**
+ * 検索ボックスコンポーネント．
+ * 候補者名や応援弁士名によるフィルタリング，および入力候補の提示（サジェスト）を行う．
+ */
 export function SearchBox() {
   const { rawSpeeches, filter, setFilter } = useStore();
   const [inputValue, setInputValue] = useState(filter.searchQuery);
@@ -17,12 +21,14 @@ export function SearchBox() {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 外部ストアのフィルタが変更されたら入力欄も同期する
+  // グローバルなフィルタ状態が変更された際，入力欄の表示を同期する
   useEffect(() => {
     setInputValue(filter.searchQuery);
   }, [filter.searchQuery]);
 
-  // サジェストリストの生成
+  /**
+   * 収集済みの演説データから，重複を除いた候補者および弁士のリストを抽出し，サジェスト母体を生成する．
+   */
   const suggestions = useMemo(() => {
     const candidates = new Set<string>();
     const speakers = new Set<string>();
@@ -44,17 +50,20 @@ export function SearchBox() {
       list.push({ type: "speaker", name });
     });
 
-    // 重複除去
+    // キー重複（候補者かつ弁士など）を排除し，五十音順等にソートする
     const uniqueList = Array.from(
       new Map(list.map(item => [item.name, item])).values(),
     );
     return uniqueList.sort((a, b) => a.name.localeCompare(b.name, "ja"));
   }, [rawSpeeches]);
 
-  // 入力に基づくフィルタリング
+  /**
+   * 現在の入力内容に基づきサジェストリストをフィルタリングする．
+   */
   const filteredSuggestions = useMemo(() => {
     if (!inputValue) return [];
     const lowerInput = inputValue.toLowerCase();
+    // 完全一致する項目が既に存在する場合はサジェストを表示しない
     if (suggestions.some(s => s.name.toLowerCase() === lowerInput)) return [];
 
     return suggestions
@@ -62,7 +71,9 @@ export function SearchBox() {
       .slice(0, 10);
   }, [inputValue, suggestions]);
 
-  // Outside Click Handler
+  /**
+   * コンポーネント外クリックを検知してサジェストを閉じるためのイベント登録．
+   */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -79,6 +90,9 @@ export function SearchBox() {
     };
   }, []);
 
+  /**
+   * サジェスト項目が選択された際の処理．
+   */
   const handleSelect = (name: string) => {
     setInputValue(name);
     setFilter({ searchQuery: name });
@@ -86,12 +100,18 @@ export function SearchBox() {
     inputRef.current?.blur();
   };
 
+  /**
+   * 検索条件をクリアする．
+   */
   const handleClear = () => {
     setInputValue("");
     setFilter({ searchQuery: "" });
     inputRef.current?.focus();
   };
 
+  /**
+   * 入力内容の変更イベントハンドラ．
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
@@ -101,6 +121,9 @@ export function SearchBox() {
     }
   };
 
+  /**
+   * Enter キー押下で検索を実行する．
+   */
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       setFilter({ searchQuery: inputValue });
@@ -158,6 +181,7 @@ export function SearchBox() {
         )}
       </Box>
 
+      {/* サジェストリストの表示エリア */}
       {isOpen && filteredSuggestions.length > 0 && (
         <Box
           position="absolute"

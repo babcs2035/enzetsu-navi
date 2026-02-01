@@ -3,6 +3,9 @@
 import { addHours, subHours } from "date-fns";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * 演説データの取得に使用するパラメータ定義．
+ */
 interface SpeechParams {
   start_time?: string;
   end_time?: string;
@@ -13,7 +16,12 @@ interface SpeechParams {
   offset?: number;
 }
 
-// レスポンス整形用ヘルパー．
+/**
+ * Prisma から取得した生の演説データを，アプリケーションで扱いやすい形式に整形する．
+ *
+ * @param s Prisma の Speech モデル（関連付けを含む）
+ * @returns 整形済みの演説オブジェクト
+ */
 // biome-ignore lint/suspicious/noExplicitAny: Prisma の型推論が複雑なため any を許容する．
 function formatSpeech(s: any) {
   return {
@@ -23,7 +31,7 @@ function formatSpeech(s: any) {
     party_id: s.candidate.partyId,
     party_name: s.candidate.party.name,
     party_color: s.candidate.party.color,
-    start_at: s.startAt, // JSON.stringify で ISO 文字列になる．
+    start_at: s.startAt,
     location_name: s.locationName,
     address: s.address,
     lat: s.lat,
@@ -34,8 +42,14 @@ function formatSpeech(s: any) {
   };
 }
 
+/**
+ * 条件に一致する演説データを取得する．
+ *
+ * @param params 絞り込みパラメータ
+ * @returns 整形済みの演説データ配列
+ */
 export async function getSpeeches(params: SpeechParams = {}) {
-  // biome-ignore lint/suspicious/noExplicitAny: 動的クエリのため any を許容する．
+  // biome-ignore lint/suspicious/noExplicitAny: 動的クエリ構築のため any を許容する．
   const where: any = {};
 
   if (params.party_ids?.length) {
@@ -71,10 +85,16 @@ export async function getSpeeches(params: SpeechParams = {}) {
     },
   });
 
-  // Date 型のシリアライズのために JSON を経由させる．
+  // Date 型のシリアライズ（Next.js Server Actions の制約）のために JSON 変換を行う．
   return JSON.parse(JSON.stringify(speeches.map(formatSpeech)));
 }
 
+/**
+ * 指定された時刻の前後一定範囲に開催される演説データを取得する．
+ *
+ * @param params 検索基準時刻，範囲（時間），フィルタリング条件
+ * @returns 整形済みの演説データ配列
+ */
 export async function getSpeechesByTimeRange(params: {
   target_time: string;
   range_hours?: number;
@@ -86,7 +106,7 @@ export async function getSpeechesByTimeRange(params: {
   const startTime = subHours(targetTime, range);
   const endTime = addHours(targetTime, range);
 
-  // biome-ignore lint/suspicious/noExplicitAny: 動的クエリのため any を許容する．
+  // biome-ignore lint/suspicious/noExplicitAny: 動的クエリ構築のため any を許容する．
   const where: any = {
     startAt: {
       gte: startTime,
@@ -120,6 +140,12 @@ export async function getSpeechesByTimeRange(params: {
   return JSON.parse(JSON.stringify(speeches.map(formatSpeech)));
 }
 
+/**
+ * 位置情報が未特定の演説データを取得する．
+ *
+ * @param limit 取得件数制限
+ * @returns 整形済みの演説データ配列
+ */
 export async function getUnknownLocations(limit = 100) {
   const speeches = await prisma.speech.findMany({
     where: {
@@ -137,6 +163,12 @@ export async function getUnknownLocations(limit = 100) {
   return JSON.parse(JSON.stringify(speeches.map(formatSpeech)));
 }
 
+/**
+ * 指定された ID の演説データを 1 件取得する．
+ *
+ * @param id 演説 ID
+ * @returns 整形済みの演説データ，または存在しない場合は null
+ */
 export async function getSpeech(id: number) {
   const speech = await prisma.speech.findUnique({
     where: { id },
@@ -149,6 +181,11 @@ export async function getSpeech(id: number) {
   return speech ? JSON.parse(JSON.stringify(formatSpeech(speech))) : null;
 }
 
+/**
+ * 演説データに関する統計情報を取得する．
+ *
+ * @returns 統計情報オブジェクト（総演説数，総候補者数，総政党数，位置未特定数，最終更新日時）
+ */
 export async function getStats() {
   const [
     totalSpeeches,

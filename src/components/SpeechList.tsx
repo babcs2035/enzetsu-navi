@@ -28,7 +28,8 @@ interface SpeechListProps {
 
 /**
  * 演説リスト表示コンポーネント．
- * 取得した演説データをリスト形式で表示し，選択時の挙動などを制御する．
+ * 取得・フィルタリングされた演説データをカード形式のリストで表示し，
+ * クリックによる詳細選択や，地図との連動スクロールを制御する．
  */
 export function SpeechList({ onSelect }: SpeechListProps) {
   const { speeches, activeSpeechId, setActiveSpeechId, isLoading, error } =
@@ -36,7 +37,9 @@ export function SpeechList({ onSelect }: SpeechListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // アクティブな演説にスクロールする．
+  /**
+   * 地図上でピンが選択された際，該当するリストアイテムまで自動スクロールする．
+   */
   useEffect(() => {
     if (activeSpeechId) {
       const cardEl = cardRefs.current.get(activeSpeechId);
@@ -46,6 +49,9 @@ export function SpeechList({ onSelect }: SpeechListProps) {
     }
   }, [activeSpeechId]);
 
+  /**
+   * リスト内のアイテムがクリックされた際のハンドラ．
+   */
   const handleSpeechClick = (id: number) => {
     setActiveSpeechId(id);
     if (onSelect) {
@@ -53,7 +59,7 @@ export function SpeechList({ onSelect }: SpeechListProps) {
     }
   };
 
-  // ローディング表示を行う．
+  // データ読み込み中（かつ初回表示時）のローディング表示
   if (isLoading && speeches.length === 0) {
     return (
       <Flex align="center" justify="center" h="full">
@@ -67,7 +73,7 @@ export function SpeechList({ onSelect }: SpeechListProps) {
     );
   }
 
-  // エラー表示を行う．
+  // データ取得エラー発生時の表示
   if (error) {
     return (
       <Flex align="center" justify="center" h="full" p={4}>
@@ -82,7 +88,7 @@ export function SpeechList({ onSelect }: SpeechListProps) {
     );
   }
 
-  // データがない場合の表示を行う．
+  // 表示対象のデータが 0 件の場合の表示
   if (speeches.length === 0) {
     return (
       <Flex align="center" justify="center" h="full" p={4}>
@@ -99,15 +105,13 @@ export function SpeechList({ onSelect }: SpeechListProps) {
 
   return (
     <Box ref={listRef} h="full" overflowY="auto" p={4}>
-      {/* 件数表示 */}
       <Flex align="center" justify="space-between" mb={3}>
         <Text fontSize="sm" color="gray.500">
-          {speeches.length}件の演説
+          {speeches.length} 件の演説
         </Text>
         {isLoading && <Spinner size="sm" color="blue.500" />}
       </Flex>
 
-      {/* 演説カードリスト */}
       <VStack gap={3} align="stretch">
         {speeches.map(speech => {
           const isActive = speech.id === activeSpeechId;
@@ -133,7 +137,7 @@ export function SpeechList({ onSelect }: SpeechListProps) {
               }}
               transition="all 0.2s"
             >
-              {/* 政党バッジ */}
+              {/* 政党情報バッジ */}
               <Flex align="center" gap={2} mb={2}>
                 <Box
                   w={2.5}
@@ -146,12 +150,12 @@ export function SpeechList({ onSelect }: SpeechListProps) {
                 </Text>
               </Flex>
 
-              {/* 候補者名 - 最大かつ最重要 */}
+              {/* 候補者名 */}
               <Heading size="md" color="gray.800" mb={3} lineHeight="shorter">
                 {speech.candidate_name}
               </Heading>
 
-              {/* 弁士情報（あれば表示する） - 場所などと同様のスタイリングに変更する． */}
+              {/* 応援弁士（存在する場合のみ表示） */}
               {speech.speakers && speech.speakers.length > 0 && (
                 <Flex align="flex-start" gap={2.5} mb={2}>
                   <Users
@@ -181,7 +185,7 @@ export function SpeechList({ onSelect }: SpeechListProps) {
                 </Flex>
               )}
 
-              {/* 場所と時間 - 同じスタイリングで統一する． */}
+              {/* 演説場所と日時情報 */}
               <VStack align="stretch" gap={2}>
                 <Flex align="flex-start" gap={2.5}>
                   <MapPin
@@ -212,9 +216,10 @@ export function SpeechList({ onSelect }: SpeechListProps) {
                 <Flex align="center" gap={2.5}>
                   <Clock size={16} color="#4A5568" style={{ flexShrink: 0 }} />
                   <Text fontSize="sm" fontWeight="bold" color="gray.700">
-                    {format(startTime, "M月d日（E） HH:mm", { locale: ja })}
+                    {format(startTime, "M月d日 (E) HH:mm", { locale: ja })}
                   </Text>
 
+                  {/* 各種外部リンクボタン */}
                   <Flex ml="auto" gap={2}>
                     {speech.source_url && (
                       <Link

@@ -7,41 +7,44 @@ import { create } from "zustand";
 import { partiesApi, speechesApi } from "@/lib/api";
 import type { FilterState, Party, Speech, Stats } from "@/types";
 
+/**
+ * ストアの状態定義．
+ */
 interface StoreState {
-  // データ
+  // エンティティデータ
   parties: Party[];
-  // 内部データ
-  // 内部データ
   rawSpeeches: Speech[];
   speeches: Speech[];
   stats: Stats | null;
 
-  // UI 状態
+  // UI 関連の状態
   activeSpeechId: number | null;
   selectedTime: Date;
   isLoading: boolean;
   error: string | null;
 
-  // フィルター
+  // フィルターの設定状態
   filter: FilterState;
 
-  // ヘルパー
+  // ヘルパーメソッド
   getPartyColor: (partyId: number) => string;
   getPartyById: (partyId: number) => Party | undefined;
 
-  // アクション
+  // 状態更新アクション
   setActiveSpeechId: (id: number | null) => void;
   setSelectedTime: (time: Date) => void;
   setFilter: (filter: Partial<FilterState>) => void;
   resetFilter: () => void;
 
-  // データ取得
+  // データ取得アクション
   fetchParties: () => Promise<void>;
-  fetchSpeeches: () => Promise<void>;
   fetchSpeechesByTime: (targetTime: Date) => Promise<void>;
   fetchStats: () => Promise<void>;
 }
 
+/**
+ * フィルターの初期状態．
+ */
 const defaultFilter: FilterState = {
   dateMode: "today",
   selectedPartyIds: [],
@@ -51,27 +54,33 @@ const defaultFilter: FilterState = {
 
 const DEFAULT_COLOR = "#808080";
 
-// フィルタリングロジック（再利用可能にするため外に出すか、ストア内で関数化する）
+/**
+ * 演説データに対してフィルタリングを適用する内部関数．
+ *
+ * @param rawSpeeches 元の演説データ配列
+ * @param filter 現在のフィルター設定
+ * @param selectedTime 選択されている時刻
+ * @returns フィルタリング後の演説データ配列
+ */
 const applyFilter = (
   rawSpeeches: Speech[],
   filter: FilterState,
   selectedTime: Date,
 ): Speech[] => {
   return rawSpeeches.filter(speech => {
-    // 演説の日時
     const speechDate = new Date(speech.start_at);
 
-    // 日付モードによるフィルタリング
+    // 日付モードに基づくフィルタリング
     if (filter.dateMode === "today") {
-      // 選択されている「時間」の前後1時間 (60分) 以内のもののみ表示
+      // 選択時刻の前後 60 分以内の演説のみを表示する
       const diff = Math.abs(differenceInMinutes(speechDate, selectedTime));
       if (diff > 60) return false;
     } else if (filter.dateMode === "upcoming") {
-      // 現在時刻より後の演説のみ表示
+      // 現在時刻より後の演説のみを表示する
       if (!isAfter(speechDate, new Date())) return false;
     }
 
-    // 政党フィルター
+    // 政党によるフィルタリング
     if (
       filter.selectedPartyIds.length > 0 &&
       !filter.selectedPartyIds.includes(speech.party_id)
@@ -79,7 +88,7 @@ const applyFilter = (
       return false;
     }
 
-    // 候補者フィルター (将来用)
+    // 候補者 ID によるフィルタリング（将来用）
     if (
       filter.selectedCandidateIds.length > 0 &&
       !filter.selectedCandidateIds.includes(speech.candidate_id)
@@ -87,12 +96,9 @@ const applyFilter = (
       return false;
     }
 
-    // 候補者・弁士検索
+    // 検索クエリ（候補者名・弁士名）によるフィルタリング
     if (filter.searchQuery) {
       const query = filter.searchQuery.toLowerCase();
-      // 候補者名 または 弁士名配列のいずれかが一致するか
-      // ユーザー体験のため、スペース区切りでの複数キーワード（AND検索）などにはせず、単純な部分一致とする
-      // ただし、Autocompleteで選択された場合は完全一致に近いものが来る想定
       const matchCandidate = speech.candidate_name
         .toLowerCase()
         .includes(query);
@@ -109,11 +115,14 @@ const applyFilter = (
   });
 };
 
+/**
+ * アプリケーションのグローバルストアを作成する．
+ */
 export const useStore = create<StoreState>((set, get) => ({
-  // 初期状態の設定を行う．
+  // 初期状態
   parties: [],
   speeches: [],
-  rawSpeeches: [], // 追加
+  rawSpeeches: [],
   stats: null,
   activeSpeechId: null,
   selectedTime: new Date(),
@@ -121,32 +130,32 @@ export const useStore = create<StoreState>((set, get) => ({
   error: null,
   filter: defaultFilter,
 
-  // ヘルパー関数: 政党 ID から色を取得する（DB から取得した値を使用する）．
+  // 政党 ID から対応する色（16 進数）を取得する
   getPartyColor: (partyId: number) => {
     const party = get().parties.find(p => p.id === partyId);
     return party?.color || DEFAULT_COLOR;
   },
 
-  // ヘルパー関数: 政党 ID から政党を取得する．
+  // 政党 ID から政党情報を取得する
   getPartyById: (partyId: number) => {
     return get().parties.find(p => p.id === partyId);
   },
 
-  // UI アクション: 選択中の演説 ID を設定する．
+  // 選択中の演説 ID を更新する
   setActiveSpeechId: id => set({ activeSpeechId: id }),
 
-  // UI アクション: 選択時間を設定し，データを取得する．
+  // 選択時刻を更新し，関連するデータを再取得する
   setSelectedTime: time => {
     set({ selectedTime: time, activeSpeechId: null });
     get().fetchSpeechesByTime(time);
   },
 
-  // UI アクション: フィルターを更新し，データを再計算する．
+  // フィルター条件を更新し，必要に応じてデータを再取得または再計算する
   setFilter: newFilter => {
     const currentFilter = get().filter;
     const updatedFilter = { ...currentFilter, ...newFilter };
 
-    // 日付モード または 検索クエリ が変わった場合はデータを再取得する
+    // データの再取得が必要な条件（日付モードまたは検索クエリの変更）かを確認する
     if (
       (newFilter.dateMode && newFilter.dateMode !== currentFilter.dateMode) ||
       (newFilter.searchQuery !== undefined &&
@@ -158,7 +167,7 @@ export const useStore = create<StoreState>((set, get) => ({
       return;
     }
 
-    // クライアントサイドフィルタリングのみの場合
+    // クライアントサイドでのフィルタリングを適用する
     const { rawSpeeches, selectedTime } = get();
     const filtered = applyFilter(rawSpeeches, updatedFilter, selectedTime);
 
@@ -169,12 +178,11 @@ export const useStore = create<StoreState>((set, get) => ({
     });
   },
 
-  // UI アクション: フィルターをリセットし，初期状態（日付以外）に戻す．
+  // フィルターを初期状態にリセットする（日付モードは維持）
   resetFilter: () => {
     const currentFilter = get().filter;
     const { rawSpeeches, selectedTime } = get();
 
-    // dateMode は維持する
     const resetFilterState: FilterState = {
       ...defaultFilter,
       dateMode: currentFilter.dateMode,
@@ -189,30 +197,25 @@ export const useStore = create<StoreState>((set, get) => ({
     });
   },
 
-  // データ取得アクション: 政党一覧を取得する．
+  // 全政党の情報を取得する
   fetchParties: async () => {
     try {
       const parties = await partiesApi.getAll();
       set({ parties });
     } catch (error) {
       console.error("❌ Failed to fetch parties:", error);
-      set({ error: "政党データの取得に失敗しました" });
+      set({ error: "Failed to fetch party data." });
     }
   },
 
-  // 互換性のための残置メソッド
-  fetchSpeeches: async () => {
-    get().fetchSpeechesByTime(get().selectedTime);
-  },
-
-  // データ取得アクション: 現在の時間に基づいて演説データを取得する（フィルタリングはクライアントサイドで行う）．
+  // 指定された時刻に基づいて演説データを取得・更新する
   fetchSpeechesByTime: async (targetTime: Date) => {
     set({ isLoading: true, error: null });
     try {
       const { filter } = get();
       let rawSpeeches: Speech[] = [];
 
-      // API 呼び出し時にフィルター条件 (party_ids, candidate_ids) を渡さないように変更
+      // モードに応じたデータ取得
       if (filter.dateMode === "all") {
         rawSpeeches = await speechesApi.getAll({
           has_location: true,
@@ -225,25 +228,22 @@ export const useStore = create<StoreState>((set, get) => ({
           limit: 1000,
         });
       } else {
-        // 今日
-        // 本日の絞り込み中は、人物検索中であっても一貫して前後1時間の演説のみ表示する
+        // デフォルトは前後 1 時間の範囲を取得する
         rawSpeeches = await speechesApi.getByTimeRange({
           target_time: targetTime.toISOString(),
           range_hours: 1,
         });
       }
 
-      // クライアントサイドフィルタリング適用
       const filtered = applyFilter(rawSpeeches, filter, targetTime);
-
       set({ rawSpeeches, speeches: filtered, isLoading: false });
     } catch (error) {
       console.error("❌ Failed to fetch speeches:", error);
-      set({ error: "演説データの取得に失敗しました", isLoading: false });
+      set({ error: "Failed to fetch speech data.", isLoading: false });
     }
   },
 
-  // データ取得アクション: 統計情報を取得する．
+  // 統計情報を取得する
   fetchStats: async () => {
     try {
       const stats = await speechesApi.getStats();

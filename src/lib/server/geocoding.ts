@@ -2,16 +2,26 @@ import { prisma } from "@/lib/prisma";
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
+/**
+ * ジオコーディングの結果を表すインターフェース．
+ */
 interface GeocodeResult {
   lat: number;
   lng: number;
   address: string;
 }
 
+/**
+ * 場所名から緯度・経度および住所を取得する．
+ * 結果はデータベースにキャッシュされ，不要な API 呼び出しを抑制する．
+ *
+ * @param locationName 場所名（駅名，施設名など）
+ * @returns ジオコーディング結果，または取得失敗時は null
+ */
 export async function geocodeLocation(
   locationName: string,
 ): Promise<GeocodeResult | null> {
-  // キャッシュチェック
+  // キャッシュから既存の結果を確認する
   const cache = await prisma.geocodeCache.findUnique({
     where: { locationName },
   });
@@ -24,14 +34,12 @@ export async function geocodeLocation(
         address: cache.address,
       };
     }
-    // キャッシュにあってnullなら過去に失敗したので再試行しない（API節約）
-    // （要件次第だが、Python版はキャッシュモデルにsaveしているか確認が必要だが、一旦そうする）
-    // NOTE: Python版の実装を見ると GeocodeCache モデルがあったので、キャッシュ機構はあるはず。
+    // 過去に失敗した（座標が null）場合は再試行をスキップする
     return null;
   }
 
   if (!GOOGLE_PLACES_API_KEY) {
-    console.warn("GOOGLE_PLACES_API_KEY is not set");
+    console.warn("⚠️ GOOGLE_PLACES_API_KEY is not configured.");
     return null;
   }
 
@@ -54,7 +62,7 @@ export async function geocodeLocation(
     );
 
     if (!response.ok) {
-      throw new Error(`Google Places API error: ${response.statusText}`);
+      throw new Error(`API response error: ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -73,7 +81,7 @@ export async function geocodeLocation(
       }
     }
 
-    // キャッシュ保存
+    // 新しいジオコーディング結果をキャッシュに保存する
     await prisma.geocodeCache.create({
       data: {
         locationName,
@@ -85,7 +93,7 @@ export async function geocodeLocation(
 
     return result;
   } catch (error) {
-    console.error("Geocoding error:", error);
+    console.error("❌ Geocoding error:", error);
     return null;
   }
 }

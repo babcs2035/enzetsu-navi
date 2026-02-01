@@ -6,12 +6,12 @@ import { useStore } from "@/store/useStore";
 
 /**
  * 統計情報表示コンポーネント．
- * 登録されている演説データ，候補者，政党の総数などを表示する．
+ * 選択された時間帯に基づき，演説地点数，候補者数，政党数の情報をコンパクトに表示する．
  */
 export function Stats() {
   const { rawSpeeches } = useStore();
 
-  // 現在表示されているデータ（フィルター前）の統計を計算
+  // フィルタリング適用前の生データ（時間帯指定のみ適用済み）から統計値を算出する
   const uniqueHandlers = new Set(rawSpeeches.map(s => s.candidate_id));
   const uniqueParties = new Set(rawSpeeches.map(s => s.party_id));
 
@@ -33,7 +33,7 @@ export function Stats() {
     },
   ];
 
-  if (rawSpeeches.length === 0) return null; // データがない時は表示しない？ または0件表示？ 今回は0件でも表示してよいが、nullのままでもよい。
+  if (rawSpeeches.length === 0) return null;
 
   return (
     <Box
