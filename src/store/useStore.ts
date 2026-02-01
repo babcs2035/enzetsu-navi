@@ -2,6 +2,7 @@
  * Zustand を用いたアプリケーションの状態管理を行うストアの実装．
  */
 
+import { differenceInMinutes, isAfter } from "date-fns";
 import { create } from "zustand";
 import { partiesApi, speechesApi } from "@/lib/api";
 import type { FilterState, Party, Speech, Stats } from "@/types";
@@ -51,10 +52,24 @@ const defaultFilter: FilterState = {
 const DEFAULT_COLOR = "#808080";
 
 // フィルタリングロジック（再利用可能にするため外に出すか、ストア内で関数化する）
-const applyFilter = (rawSpeeches: Speech[], filter: FilterState): Speech[] => {
+const applyFilter = (
+  rawSpeeches: Speech[],
+  filter: FilterState,
+  selectedTime: Date,
+): Speech[] => {
   return rawSpeeches.filter(speech => {
-    // 座標チェック (常に座標ありのみを表示する方針であれば)
-    // if (!speech.lat || !speech.lng) return false;
+    // 演説の日時
+    const speechDate = new Date(speech.start_at);
+
+    // 日付モードによるフィルタリング
+    if (filter.dateMode === "today") {
+      // 選択されている「時間」の前後1時間 (60分) 以内のもののみ表示
+      const diff = Math.abs(differenceInMinutes(speechDate, selectedTime));
+      if (diff > 60) return false;
+    } else if (filter.dateMode === "upcoming") {
+      // 現在時刻より後の演説のみ表示
+      if (!isAfter(speechDate, new Date())) return false;
+    }
 
     // 政党フィルター
     if (
@@ -144,8 +159,8 @@ export const useStore = create<StoreState>((set, get) => ({
     }
 
     // クライアントサイドフィルタリングのみの場合
-    const { rawSpeeches } = get();
-    const filtered = applyFilter(rawSpeeches, updatedFilter);
+    const { rawSpeeches, selectedTime } = get();
+    const filtered = applyFilter(rawSpeeches, updatedFilter, selectedTime);
 
     set({
       filter: updatedFilter,
@@ -157,14 +172,15 @@ export const useStore = create<StoreState>((set, get) => ({
   // UI アクション: フィルターをリセットし，初期状態（日付以外）に戻す．
   resetFilter: () => {
     const currentFilter = get().filter;
+    const { rawSpeeches, selectedTime } = get();
+
     // dateMode は維持する
     const resetFilterState: FilterState = {
       ...defaultFilter,
       dateMode: currentFilter.dateMode,
     };
 
-    const { rawSpeeches } = get();
-    const filtered = applyFilter(rawSpeeches, resetFilterState);
+    const filtered = applyFilter(rawSpeeches, resetFilterState, selectedTime);
 
     set({
       filter: resetFilterState,
@@ -209,18 +225,16 @@ export const useStore = create<StoreState>((set, get) => ({
           limit: 1000,
         });
       } else {
-        // 今日・明日
-        // 検索時は移動経路を表示したいので、その日のデータを広く取得する (24時間)
-        // 通常時はパフォーマンス重視で前後1時間
-        const rangeHours = filter.searchQuery ? 24 : 1;
+        // 今日
+        // 本日の絞り込み中は、人物検索中であっても一貫して前後1時間の演説のみ表示する
         rawSpeeches = await speechesApi.getByTimeRange({
           target_time: targetTime.toISOString(),
-          range_hours: rangeHours,
+          range_hours: 1,
         });
       }
 
       // クライアントサイドフィルタリング適用
-      const filtered = applyFilter(rawSpeeches, filter);
+      const filtered = applyFilter(rawSpeeches, filter, targetTime);
 
       set({ rawSpeeches, speeches: filtered, isLoading: false });
     } catch (error) {
