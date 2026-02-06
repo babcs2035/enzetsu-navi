@@ -51,6 +51,13 @@ export function MapView() {
   const { speeches, activeSpeechId, setActiveSpeechId, filter, selectedTime } =
     useStore();
 
+  // イベントリスナー内で最新の activeSpeechId を参照するための Ref
+  const activeSpeechIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    activeSpeechIdRef.current = activeSpeechId;
+  }, [activeSpeechId]);
+
   /**
    * 指定された演説データに基づいてカスタムマーカーを作成する．
    */
@@ -107,12 +114,18 @@ export function MapView() {
 
       // Hover時にもpopupを表示（ズームなし）
       el.addEventListener("mouseenter", () => {
-        showPopupFn(speech, false);
+        // 既にアクティブなピンを表示している場合は再表示しない（ちらつき防止）
+        if (activeSpeechIdRef.current !== speech.id) {
+          showPopupFn(speech, false);
+        }
       });
 
       // Hoverを外したらpopupを閉じる
       el.addEventListener("mouseleave", () => {
-        closePopupFn();
+        // アクティブなピンの場合は閉じない
+        if (activeSpeechIdRef.current !== speech.id) {
+          closePopupFn();
+        }
       });
 
       const marker = new maplibregl.Marker({ element: el })
