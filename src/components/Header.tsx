@@ -31,7 +31,7 @@ export function Header({
       as="header"
       position="sticky"
       top={0}
-      zIndex={50}
+      zIndex={1100}
       px={4}
       py={2} // パディングを戻す
       align="center"

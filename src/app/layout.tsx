@@ -33,8 +33,10 @@ export const metadata: Metadata = {
     images: ["https://ktak.dev/enzetsu-navi/ogp.png"],
   },
   icons: {
-    icon: "https://ktak.dev/enzetsu-navi/favicon.svg",
+    icon: "/enzetsu-navi/favicon.png",
+    apple: "/enzetsu-navi/favicon.png",
   },
+  manifest: "/enzetsu-navi/manifest.json",
 };
 
 export const viewport: Metadata["viewport"] = {

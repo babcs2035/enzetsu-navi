@@ -24,7 +24,7 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
           position="fixed"
           inset={0}
           bg="blackAlpha.600"
-          zIndex={30}
+          zIndex={1000}
           display={{ lg: "none" }}
           onClick={onClose}
         />
@@ -37,7 +37,7 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
         right={0}
         top={0}
         bottom={0}
-        zIndex={40}
+        zIndex={1050}
         pt={{ base: "60px", lg: 0 }} // スマートフォン表示時はヘッダーの高さ分の余白を確保
         w="full"
         maxW={{ base: "md", lg: "sm", xl: "md" }}

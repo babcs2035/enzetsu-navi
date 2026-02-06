@@ -29,6 +29,10 @@ body {
 }
 
 /* MapLibreのスタイル調整 */
+.maplibregl-popup {
+  z-index: 500 !important;
+}
+
 .maplibregl-popup-content {
   background: rgba(255, 255, 255, 0.98);
   color: #1e293b;

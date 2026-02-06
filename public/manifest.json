@@ -1,0 +1,21 @@
+{
+  "name": "街頭演説ナビ",
+  "short_name": "街頭演説ナビ",
+  "description": "日本の国政選挙における街頭演説の場所をリアルタイムで地図上に可視化．政党・候補者ごとの演説スケジュールを確認できます．",
+  "start_url": "/enzetsu-navi/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/enzetsu-navi/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/enzetsu-navi/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
