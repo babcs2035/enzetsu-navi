@@ -1,6 +1,15 @@
 "use client";
 
-import { Box, Dialog, Flex, Spinner, Text, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Dialog,
+  Flex,
+  IconButton,
+  Spinner,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import { X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import {
@@ -118,7 +127,7 @@ export default function HomePage() {
             <Dialog.Backdrop />
             <Dialog.Positioner>
               <Dialog.Content
-                bg="whiteAlpha.950"
+                bg="rgba(249, 250, 251, 0.95)"
                 backdropFilter="blur(16px)"
                 borderRadius="2xl"
                 boxShadow="xl"
@@ -128,9 +137,18 @@ export default function HomePage() {
                   position="absolute"
                   top={3}
                   right={3}
-                  color="gray.500"
-                  _hover={{ bg: "gray.100" }}
-                />
+                  asChild
+                >
+                  <IconButton
+                    aria-label="閉じる"
+                    variant="ghost"
+                    color="gray.500"
+                    size="sm"
+                    _hover={{ bg: "gray.100" }}
+                  >
+                    <X size={20} />
+                  </IconButton>
+                </Dialog.CloseTrigger>
                 <Dialog.Header p={4} pb={2}>
                   <Dialog.Title
                     fontSize="lg"

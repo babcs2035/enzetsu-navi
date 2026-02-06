@@ -1,40 +1,55 @@
 "use client";
 
-import { Box, HStack, Icon, Input, Text, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  HStack,
+  Icon,
+  Input,
+  Text,
+  VStack,
+  Wrap,
+  WrapItem,
+} from "@chakra-ui/react";
 import { Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/store/useStore";
 
 /**
  * 検索ボックスコンポーネント．
- * 候補者名や応援弁士名によるフィルタリング，および入力候補の提示（サジェスト）を行う．
+ * 候補者名や応援弁士名による複数選択フィルタリング，および入力候補の提示（サジェスト）を行う．
+ * 候補はデータ件数でソートされる．
  */
 export function SearchBox() {
   const { searchSuggestions, filter, setFilter } = useStore();
-  const [inputValue, setInputValue] = useState(filter.searchQuery);
+  const [inputValue, setInputValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // グローバルなフィルタ状態が変更された際，入力欄の表示を同期する
-  useEffect(() => {
-    setInputValue(filter.searchQuery);
-  }, [filter.searchQuery]);
+  // 選択中の名前一覧
+  const selectedNames = filter.selectedNames;
 
   /**
    * 現在の入力内容に基づきサジェストリストをフィルタリングする．
+   * データ件数で既にソート済みのため，そのまま使用する．
+   * 「（候補者なし）」は除外する．
    */
   const filteredSuggestions = useMemo(() => {
-    if (!inputValue) return [];
-    const lowerInput = inputValue.toLowerCase();
-    // 完全一致する項目が既に存在する場合はサジェストを表示しない
-    if (searchSuggestions.some(s => s.name.toLowerCase() === lowerInput))
-      return [];
+    // 選択済みの名前を除外，「（候補者なし）」も除外
+    const available = searchSuggestions.filter(
+      s => !selectedNames.includes(s.name) && s.name !== "（候補者なし）",
+    );
 
-    return searchSuggestions
+    if (!inputValue) {
+      // 入力値がない場合は件数順に上位10件を表示
+      return available.slice(0, 10);
+    }
+
+    const lowerInput = inputValue.toLowerCase();
+    return available
       .filter(s => s.name.toLowerCase().includes(lowerInput))
       .slice(0, 10);
-  }, [inputValue, searchSuggestions]);
+  }, [inputValue, searchSuggestions, selectedNames]);
 
   /**
    * コンポーネント外クリックを検知してサジェストを閉じるためのイベント登録．
@@ -59,18 +74,27 @@ export function SearchBox() {
    * サジェスト項目が選択された際の処理．
    */
   const handleSelect = (name: string) => {
-    setInputValue(name);
-    setFilter({ searchQuery: name });
+    const newNames = [...selectedNames, name];
+    setFilter({ selectedNames: newNames });
+    setInputValue("");
     setIsOpen(false);
-    inputRef.current?.blur();
+    inputRef.current?.focus();
   };
 
   /**
-   * 検索条件をクリアする．
+   * 選択済みの名前を削除する．
    */
-  const handleClear = () => {
+  const handleRemove = (name: string) => {
+    const newNames = selectedNames.filter(n => n !== name);
+    setFilter({ selectedNames: newNames });
+  };
+
+  /**
+   * 全ての選択をクリアする．
+   */
+  const handleClearAll = () => {
+    setFilter({ selectedNames: [] });
     setInputValue("");
-    setFilter({ searchQuery: "" });
     inputRef.current?.focus();
   };
 
@@ -81,28 +105,20 @@ export function SearchBox() {
     const val = e.target.value;
     setInputValue(val);
     setIsOpen(true);
-    if (val === "") {
-      setFilter({ searchQuery: "" });
-    }
   };
 
   /**
-   * Enter キー押下で検索を実行する．
+   * Enter キー押下でサジェストの最初の項目を選択する．
    */
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      setFilter({ searchQuery: inputValue });
-      setIsOpen(false);
+    if (e.key === "Enter" && filteredSuggestions.length > 0) {
+      handleSelect(filteredSuggestions[0].name);
     }
   };
 
   return (
-    <Box
-      position="relative"
-      w="full"
-      maxW={{ base: "100%", md: "400px" }}
-      ref={containerRef}
-    >
+    <Box position="relative" w="full" ref={containerRef}>
+      {/* 検索入力エリア */}
       <Box position="relative">
         <Box
           position="absolute"
@@ -112,13 +128,15 @@ export function SearchBox() {
           zIndex={2}
           pointerEvents="none"
         >
-          <Icon as={Search} color="gray.400" />
+          <Icon as={Search} color="gray.400" boxSize={4} />
         </Box>
         <Input
           ref={inputRef}
-          pl={10}
-          pr={inputValue ? 10 : 4}
-          placeholder="候補者・弁士を検索..."
+          pl={9}
+          pr={4}
+          placeholder={
+            selectedNames.length > 0 ? "さらに追加..." : "候補者・弁士を検索..."
+          }
           value={inputValue}
           onChange={handleChange}
           onFocus={() => setIsOpen(true)}
@@ -127,6 +145,7 @@ export function SearchBox() {
           border="none"
           color="gray.800"
           borderRadius="lg"
+          size="sm"
           _focus={{
             bg: "white",
             boxShadow: "0 0 0 2px var(--chakra-colors-blue-400)",
@@ -134,22 +153,76 @@ export function SearchBox() {
           _placeholder={{ color: "gray.500" }}
           aria-label="検索ボックス"
         />
-        {inputValue && (
-          <Box
-            position="absolute"
-            right={3}
-            top="50%"
-            transform="translateY(-50%)"
-            zIndex={2}
-            cursor="pointer"
-            onClick={handleClear}
-            color="gray.400"
-            _hover={{ color: "gray.600" }}
-          >
-            <Icon as={X} />
-          </Box>
-        )}
       </Box>
+
+      {/* 選択済みタグの表示エリア */}
+      {selectedNames.length > 0 && (
+        <Box mt={2}>
+          <HStack justify="space-between" mb={1.5}>
+            <Text fontSize="xs" color="gray.500">
+              選択中
+            </Text>
+            <Box
+              as="button"
+              fontSize="xs"
+              color="blue.500"
+              onClick={handleClearAll}
+              _hover={{ textDecoration: "underline" }}
+            >
+              クリア
+            </Box>
+          </HStack>
+          <Wrap gap={1}>
+            {selectedNames.map(name => {
+              const suggestion = searchSuggestions.find(s => s.name === name);
+              return (
+                <WrapItem key={name}>
+                  <HStack
+                    bg="blue.50"
+                    border="1px solid"
+                    borderColor="blue.200"
+                    borderRadius="full"
+                    px={2}
+                    py={0.5}
+                    gap={1}
+                  >
+                    {suggestion?.party && (
+                      <Box
+                        w={2}
+                        h={2}
+                        borderRadius="full"
+                        bg={suggestion.party.color}
+                        flexShrink={0}
+                      />
+                    )}
+                    <Text fontSize="xs" color="blue.700" fontWeight="medium">
+                      {name}
+                    </Text>
+                    <Box
+                      as="button"
+                      onClick={() => handleRemove(name)}
+                      color="blue.400"
+                      _hover={{ color: "red.500", bg: "red.50" }}
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      cursor="pointer"
+                      borderRadius="full"
+                      p={1}
+                      ml={0.5}
+                      minW={6}
+                      minH={6}
+                      transition="all 0.15s"
+                    >
+                      <X size={14} />
+                    </Box>
+                  </HStack>
+                </WrapItem>
+              );
+            })}
+          </Wrap>
+        </Box>
+      )}
 
       {/* サジェストリストの表示エリア */}
       {isOpen && filteredSuggestions.length > 0 && (
@@ -158,13 +231,13 @@ export function SearchBox() {
           top="100%"
           left={0}
           right={0}
-          mt={2}
+          mt={1}
           bg="white"
           borderRadius="md"
           boxShadow="lg"
           zIndex={100}
           overflow="hidden"
-          maxH="300px"
+          maxH="280px"
           overflowY="auto"
         >
           <VStack
@@ -179,8 +252,8 @@ export function SearchBox() {
               <Box
                 as="li"
                 key={`${suggestion.type}-${suggestion.name}`}
-                px={4}
-                py={3}
+                px={3}
+                py={2}
                 cursor="pointer"
                 _hover={{ bg: "gray.50" }}
                 onClick={() => handleSelect(suggestion.name)}
@@ -190,38 +263,59 @@ export function SearchBox() {
                 borderColor="gray.100"
               >
                 <HStack justify="space-between">
-                  <VStack align="start" gap={0}>
-                    <Text fontSize="md" color="gray.800" fontWeight="medium">
+                  <HStack gap={2}>
+                    {suggestion.party && (
+                      <Box
+                        w={2}
+                        h={2}
+                        borderRadius="full"
+                        bg={suggestion.party.color}
+                        flexShrink={0}
+                      />
+                    )}
+                    <Text fontSize="sm" color="gray.800" fontWeight="medium">
                       {suggestion.name}
                     </Text>
-                    {suggestion.party && (
-                      <HStack gap={1.5} mt={0.5}>
-                        <Box
-                          w={2}
-                          h={2}
-                          borderRadius="full"
-                          bg={suggestion.party.color}
-                        />
-                        <Text fontSize="xs" color="gray.500">
-                          {suggestion.party.name}
-                        </Text>
-                      </HStack>
-                    )}
-                  </VStack>
-                  <Text
-                    fontSize="xs"
-                    color="gray.400"
-                    bg="gray.100"
-                    px={2}
-                    py={0.5}
-                    borderRadius="full"
-                  >
-                    {suggestion.type === "candidate" ? "候補者" : "弁士"}
-                  </Text>
+                  </HStack>
+                  <HStack gap={1.5}>
+                    <Text fontSize="xs" color="gray.400">
+                      {suggestion.count}件
+                    </Text>
+                    <Text
+                      fontSize="xs"
+                      color="gray.400"
+                      bg="gray.100"
+                      px={1.5}
+                      py={0.5}
+                      borderRadius="sm"
+                    >
+                      {suggestion.type === "candidate" ? "候補" : "弁士"}
+                    </Text>
+                  </HStack>
                 </HStack>
               </Box>
             ))}
           </VStack>
+        </Box>
+      )}
+
+      {/* サジェストがない場合のメッセージ */}
+      {isOpen && inputValue && filteredSuggestions.length === 0 && (
+        <Box
+          position="absolute"
+          top="100%"
+          left={0}
+          right={0}
+          mt={2}
+          bg="white"
+          borderRadius="md"
+          boxShadow="lg"
+          zIndex={100}
+          p={3}
+        >
+          <Text fontSize="sm" color="gray.500" textAlign="center">
+            「{inputValue}」に一致する候補が見つかりません
+          </Text>
         </Box>
       )}
     </Box>

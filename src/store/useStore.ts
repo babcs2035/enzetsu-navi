@@ -2,7 +2,7 @@
  * Zustand を用いたアプリケーションの状態管理を行うストアの実装．
  */
 
-import { differenceInMinutes, isAfter } from "date-fns";
+import { addDays, differenceInMinutes, endOfDay, startOfDay } from "date-fns";
 import { create } from "zustand";
 import { partiesApi, speechesApi } from "@/lib/api";
 import type {
@@ -57,7 +57,8 @@ const defaultFilter: FilterState = {
   dateMode: "today",
   selectedPartyIds: [],
   selectedCandidateIds: [],
-  searchQuery: "",
+  selectedNames: [],
+  allDay: false,
 };
 
 const DEFAULT_COLOR = "#808080";
@@ -80,12 +81,23 @@ const applyFilter = (
 
     // 日付モードに基づくフィルタリング
     if (filter.dateMode === "today") {
-      // 選択時刻の前後 60 分以内の演説のみを表示する
-      const diff = Math.abs(differenceInMinutes(speechDate, selectedTime));
-      if (diff > 60) return false;
-    } else if (filter.dateMode === "upcoming") {
-      // 現在時刻より後の演説のみを表示する
-      if (!isAfter(speechDate, new Date())) return false;
+      if (filter.allDay) {
+        // 終日モード: 当日の演説すべてを表示
+        const now = new Date();
+        const todayStart = startOfDay(now);
+        const todayEnd = endOfDay(now);
+        if (speechDate < todayStart || speechDate > todayEnd) return false;
+      } else {
+        // 選択時刻の前後 60 分以内の演説のみを表示する
+        const diff = Math.abs(differenceInMinutes(speechDate, selectedTime));
+        if (diff > 60) return false;
+      }
+    } else if (filter.dateMode === "tomorrow") {
+      // 明日の演説のみを表示する
+      const now = new Date();
+      const tomorrowStart = startOfDay(addDays(now, 1));
+      const tomorrowEnd = endOfDay(addDays(now, 1));
+      if (speechDate < tomorrowStart || speechDate > tomorrowEnd) return false;
     }
 
     // 政党によるフィルタリング
@@ -104,17 +116,21 @@ const applyFilter = (
       return false;
     }
 
-    // 検索クエリ（候補者名・弁士名）によるフィルタリング
-    if (filter.searchQuery) {
-      const query = filter.searchQuery.toLowerCase();
-      const matchCandidate = speech.candidate_name
-        .toLowerCase()
-        .includes(query);
-      const matchSpeaker = speech.speakers.some(s =>
-        s.toLowerCase().includes(query),
-      );
+    // 選択された名前によるフィルタリング（複数選択対応）
+    if (filter.selectedNames.length > 0) {
+      // 選択された名前のいずれかに一致するかをチェック
+      const matchesAny = filter.selectedNames.some(name => {
+        const lowerName = name.toLowerCase();
+        const matchCandidate = speech.candidate_name
+          .toLowerCase()
+          .includes(lowerName);
+        const matchSpeaker = speech.speakers.some(s =>
+          s.toLowerCase().includes(lowerName),
+        );
+        return matchCandidate || matchSpeaker;
+      });
 
-      if (!matchCandidate && !matchSpeaker) {
+      if (!matchesAny) {
         return false;
       }
     }
@@ -164,11 +180,14 @@ export const useStore = create<StoreState>((set, get) => ({
     const currentFilter = get().filter;
     const updatedFilter = { ...currentFilter, ...newFilter };
 
-    // データの再取得が必要な条件（日付モードまたは検索クエリの変更）かを確認する
+    // データの再取得が必要な条件（日付モード、終日モード、または選択名の変更）かを確認する
     if (
       (newFilter.dateMode && newFilter.dateMode !== currentFilter.dateMode) ||
-      (newFilter.searchQuery !== undefined &&
-        newFilter.searchQuery !== currentFilter.searchQuery)
+      (newFilter.allDay !== undefined &&
+        newFilter.allDay !== currentFilter.allDay) ||
+      (newFilter.selectedNames !== undefined &&
+        JSON.stringify(newFilter.selectedNames) !==
+          JSON.stringify(currentFilter.selectedNames))
     ) {
       set({ filter: updatedFilter, activeSpeechId: null });
       const { fetchSpeechesByTime, selectedTime } = get();
@@ -230,9 +249,25 @@ export const useStore = create<StoreState>((set, get) => ({
           has_location: true,
           limit: 1000,
         });
-      } else if (filter.dateMode === "upcoming") {
+      } else if (filter.dateMode === "tomorrow") {
+        // 明日の演説を取得する
+        const now = new Date();
+        const tomorrowStart = startOfDay(addDays(now, 1));
+        const tomorrowEnd = endOfDay(addDays(now, 1));
         rawSpeeches = await speechesApi.getAll({
-          start_time: new Date().toISOString(),
+          start_time: tomorrowStart.toISOString(),
+          end_time: tomorrowEnd.toISOString(),
+          has_location: true,
+          limit: 1000,
+        });
+      } else if (filter.allDay) {
+        // 終日モード: 当日全体のデータを取得する
+        const now = new Date();
+        const todayStart = startOfDay(now);
+        const todayEnd = endOfDay(now);
+        rawSpeeches = await speechesApi.getAll({
+          start_time: todayStart.toISOString(),
+          end_time: todayEnd.toISOString(),
           has_location: true,
           limit: 1000,
         });

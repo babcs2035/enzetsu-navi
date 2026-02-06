@@ -37,7 +37,7 @@ export function Stats() {
 
   return (
     <Box
-      bg="whiteAlpha.900"
+      bg="rgba(249, 250, 251, 0.9)"
       backdropFilter="blur(12px)"
       border="1px solid"
       borderColor="gray.200"

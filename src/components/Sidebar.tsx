@@ -1,7 +1,6 @@
 "use client";
 
-import { Box, Flex, Heading, IconButton } from "@chakra-ui/react";
-import { X } from "lucide-react";
+import { Box } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
 interface SidebarProps {
@@ -12,6 +11,7 @@ interface SidebarProps {
 
 /**
  * サイドバーコンポーネント．
+ *
  * 演説リストおよび詳細情報を表示するためのコンテナとして機能する．
  * モバイル表示時はドロワーとして動作し，オーバーレイの管理も行う．
  */
@@ -38,9 +38,10 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
         top={0}
         bottom={0}
         zIndex={40}
+        pt={{ base: "60px", lg: 0 }} // スマートフォン表示時はヘッダーの高さ分の余白を確保
         w="full"
         maxW={{ base: "md", lg: "sm", xl: "md" }}
-        bg="whiteAlpha.900"
+        bg="rgba(249, 250, 251, 0.95)"
         backdropFilter="blur(12px)"
         borderLeft="1px solid"
         borderColor="gray.200"
@@ -53,30 +54,6 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
         display={isOpen ? "flex" : { base: "flex", lg: "none" }}
         flexDirection="column"
       >
-        {/* モバイル表示時にのみ表示されるヘッダーエリア */}
-        <Flex
-          align="center"
-          justify="space-between"
-          p={4}
-          borderBottom="1px solid"
-          borderColor="gray.200"
-          display={{ lg: "none" }}
-        >
-          <Heading size="sm" color="gray.800">
-            演説リスト
-          </Heading>
-          <IconButton
-            aria-label="閉じる"
-            onClick={onClose}
-            variant="ghost"
-            size="sm"
-            color="gray.600"
-            _hover={{ bg: "gray.100" }}
-          >
-            <X size={20} />
-          </IconButton>
-        </Flex>
-
         {/* サイドバー内部のスクロール可能なコンテンツエリア */}
         <Box flex={1} overflow="hidden">
           {children}

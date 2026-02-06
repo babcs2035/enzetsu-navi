@@ -221,8 +221,9 @@ export async function getStats() {
 /**
  * 検索サジェスト用の候補者名および弁士名のユニークなリストを取得する．
  * フィルター状態に関わらず全件から抽出する．
+ * データ件数も含め、件数順でソートして返す。
  *
- * @returns 候補者・弁士名の配列（{ name: string, type: 'candidate' | 'speaker' }[]）
+ * @returns 候補者・弁士名の配列（{ name: string, type: 'candidate' | 'speaker', count: number }[]）
  */
 export async function getSearchSuggestions() {
   const speeches = await prisma.speech.findMany({
@@ -243,25 +244,28 @@ export async function getSearchSuggestions() {
     },
   });
 
-  // 候補者のマッピング（名前 -> 政党情報）
+  // 候補者のカウントマップ（名前 -> 件数）
+  const candidateCounts = new Map<string, number>();
+  // 候補者の政党マップ（名前 -> 政党情報）
   const candidateParties = new Map<
     string,
     { id: number; name: string; color: string }
   >();
-  // 弁士のマッピング（名前 -> 政党情報）。弁士の場合は複数の政党で話す可能性があるが、今回は最初に見つかったものを採用する。
+
+  // 弁士のカウントマップ（名前 -> 件数）
+  const speakerCounts = new Map<string, number>();
+  // 弁士の政党マップ（名前 -> 政党情報）
   const speakerParties = new Map<
     string,
     { id: number; name: string; color: string }
   >();
 
-  const candidates = new Set<string>();
-  const speakers = new Set<string>();
-
   for (const s of speeches) {
     if (s.candidate?.name) {
-      candidates.add(s.candidate.name);
-      if (s.candidate.party && !candidateParties.has(s.candidate.name)) {
-        candidateParties.set(s.candidate.name, {
+      const name = s.candidate.name;
+      candidateCounts.set(name, (candidateCounts.get(name) || 0) + 1);
+      if (s.candidate.party && !candidateParties.has(name)) {
+        candidateParties.set(name, {
           id: s.candidate.party.id,
           name: s.candidate.party.name,
           color: s.candidate.party.color,
@@ -272,7 +276,10 @@ export async function getSearchSuggestions() {
       for (const speaker of s.speakers) {
         if (typeof speaker === "string" && speaker.trim()) {
           const cleanSpeaker = speaker.trim();
-          speakers.add(cleanSpeaker);
+          speakerCounts.set(
+            cleanSpeaker,
+            (speakerCounts.get(cleanSpeaker) || 0) + 1,
+          );
           // 弁士の政党情報を記録（まだ記録されていない場合のみ）
           if (s.candidate?.party && !speakerParties.has(cleanSpeaker)) {
             speakerParties.set(cleanSpeaker, {
@@ -289,27 +296,31 @@ export async function getSearchSuggestions() {
   const result: {
     name: string;
     type: "candidate" | "speaker";
+    count: number;
     party?: { id: number; name: string; color: string };
   }[] = [];
 
-  for (const name of candidates) {
+  for (const [name, count] of candidateCounts) {
     result.push({
       name,
       type: "candidate",
+      count,
       party: candidateParties.get(name),
     });
   }
 
-  for (const name of speakers) {
+  for (const [name, count] of speakerCounts) {
     // 候補者としても存在する場合は候補者優先
-    if (!candidates.has(name)) {
+    if (!candidateCounts.has(name)) {
       result.push({
         name,
         type: "speaker",
+        count,
         party: speakerParties.get(name),
       });
     }
   }
 
-  return result.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  // 件数の多い順にソート
+  return result.sort((a, b) => b.count - a.count);
 }

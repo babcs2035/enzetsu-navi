@@ -55,7 +55,11 @@ export function MapView() {
    * 指定された演説データに基づいてカスタムマーカーを作成する．
    */
   const createMarker = useCallback(
-    (speech: Speech): maplibregl.Marker | null => {
+    (
+      speech: Speech,
+      showPopupFn: (speech: Speech, shouldZoom: boolean) => void,
+      closePopupFn: () => void,
+    ): maplibregl.Marker | null => {
       // ローカル変数に確保して型ガードを有効にする
       const currentMap = map.current;
       if (!speech.lat || !speech.lng || !currentMap) return null;
@@ -64,8 +68,12 @@ export function MapView() {
       let scale = 1;
       let zIndex = 1;
 
-      // 検索フィルタ適用中かつ「今日」モード時の視覚的強調処理
-      if (filter.searchQuery && filter.dateMode === "today") {
+      // 検索フィルタ適用中かつ「今日」モード時かつ終日モードでない場合の視覚的強調処理
+      if (
+        filter.selectedNames.length > 0 &&
+        filter.dateMode === "today" &&
+        !filter.allDay
+      ) {
         const speechTime = new Date(speech.start_at).getTime();
         const currentTime = selectedTime.getTime();
         const diffHours = Math.abs(speechTime - currentTime) / (1000 * 60 * 60);
@@ -81,6 +89,7 @@ export function MapView() {
         }
       }
 
+      // マーカー要素を作成
       const el = document.createElement("div");
       el.className = "party-marker";
       el.style.backgroundColor = speech.party_color;
@@ -89,8 +98,21 @@ export function MapView() {
       el.style.transform = `scale(${scale})`;
       el.style.zIndex = zIndex.toString();
 
-      el.addEventListener("click", () => {
+      // マーカークリック時の処理（ズームあり）
+      el.addEventListener("click", e => {
+        e.stopPropagation();
+        showPopupFn(speech, true);
         setActiveSpeechId(speech.id);
+      });
+
+      // Hover時にもpopupを表示（ズームなし）
+      el.addEventListener("mouseenter", () => {
+        showPopupFn(speech, false);
+      });
+
+      // Hoverを外したらpopupを閉じる
+      el.addEventListener("mouseleave", () => {
+        closePopupFn();
       });
 
       const marker = new maplibregl.Marker({ element: el })
@@ -99,14 +121,22 @@ export function MapView() {
 
       return marker;
     },
-    [setActiveSpeechId, filter.searchQuery, filter.dateMode, selectedTime],
+    [
+      setActiveSpeechId,
+      filter.selectedNames,
+      filter.dateMode,
+      filter.allDay,
+      selectedTime,
+    ],
   );
 
   /**
    * マーカークリック時に詳細情報を表示するポップアップを生成・表示する．
+   * @param speech 演説データ
+   * @param shouldZoom ズームインを行うかどうか（クリック時はtrue、hover時はfalse）
    */
   const showPopup = useCallback(
-    (speech: Speech) => {
+    (speech: Speech, shouldZoom = true) => {
       // ローカル変数に確保して型ガードを有効にする
       const currentMap = map.current;
       if (!speech.lat || !speech.lng || !currentMap) return;
@@ -205,24 +235,29 @@ export function MapView() {
 
       popupRef.current = popup;
 
-      const isMobile = window.matchMedia("(max-width: 991px)").matches;
-      const rightPadding = isMobile ? 0 : 350;
-      const bottomPadding = isMobile ? 150 : 0; // モバイルはポップアップ用に下部を空ける
-
-      currentMap.flyTo({
-        center: [speech.lng, speech.lat],
-        zoom: 15,
-        padding: {
-          right: rightPadding,
-          bottom: bottomPadding,
-          top: 0,
-          left: 0,
-        },
-        duration: 1000,
-      });
+      // ズームインはクリック時のみ実行
+      if (shouldZoom) {
+        currentMap.flyTo({
+          center: [speech.lng, speech.lat],
+          zoom: 15,
+          duration: 1000,
+        });
+      }
     },
     [setActiveSpeechId],
   );
+
+  /**
+   * ポップアップを閉じる
+   */
+  const closePopup = useCallback(() => {
+    if (popupRef.current) {
+      isProgrammaticClose.current = true;
+      popupRef.current.remove();
+      popupRef.current = null;
+      isProgrammaticClose.current = false;
+    }
+  }, []);
 
   /**
    * コンポーネントのマウント時に地図インスタンスを初期化する．
@@ -320,6 +355,9 @@ export function MapView() {
       .custom-popup .maplibregl-popup-tip {
         border-top-color: #ffffff;
       }
+      .maplibregl-popup {
+        z-index: 100;
+      }
       .party-marker {
         width: 28px;
         height: 28px;
@@ -372,7 +410,7 @@ export function MapView() {
 
     // 新しい演説リストに基づいてマーカーを再配置する
     speeches.forEach(speech => {
-      const marker = createMarker(speech);
+      const marker = createMarker(speech, showPopup, closePopup);
       if (marker) {
         markersRef.current.set(speech.id, marker);
       }
@@ -384,11 +422,33 @@ export function MapView() {
 
     const removeLayers = () => {
       if (!map.current) return;
+
+      // 既存のレイヤーを削除
       if (map.current.getLayer(arrowLayerId))
         map.current.removeLayer(arrowLayerId);
       if (map.current.getLayer(lineLayerId))
         map.current.removeLayer(lineLayerId);
       if (map.current.getSource(sourceId)) map.current.removeSource(sourceId);
+
+      // 候補者ごとのレイヤーも削除（route-*パターン）
+      const style = map.current.getStyle();
+      if (style?.layers) {
+        style.layers.forEach(layer => {
+          if (
+            layer.id.startsWith("route-line-layer-") ||
+            layer.id.startsWith("route-arrow-layer-")
+          ) {
+            map.current?.removeLayer(layer.id);
+          }
+        });
+      }
+      if (style?.sources) {
+        Object.keys(style.sources).forEach(sourceKey => {
+          if (sourceKey.startsWith("route-source-")) {
+            map.current?.removeSource(sourceKey);
+          }
+        });
+      }
     };
 
     removeLayers();
@@ -403,12 +463,13 @@ export function MapView() {
       }
     });
 
-    if (filter.searchQuery) {
+    if (filter.selectedNames.length > 0) {
       shouldFitBounds = true;
     }
 
-    // 演説が複数あり，かつ同一候補者（または同一弁士）によるものなら移動経路を描画する
-    if (speeches.length >= 2) {
+    // 演説が複数ある場合で、かつ1人だけ選択時のみ移動経路を描画する
+    // （同一候補者または共通弁士がいる場合のみ）
+    if (speeches.length >= 2 && filter.selectedNames.length === 1) {
       const candidateIds = new Set(speeches.map(s => s.candidate_id));
       const isSingleCandidate = candidateIds.size === 1;
 
@@ -421,7 +482,7 @@ export function MapView() {
       }
 
       if (isSingleCandidate || isCommonSpeaker) {
-        // ... (route drawing logic)
+        // 単一候補者または共通弁士の場合は従来通り1本の経路
         const sortedSpeeches = [...speeches].sort(
           (a, b) =>
             new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
@@ -442,8 +503,6 @@ export function MapView() {
           shouldFitBounds = true;
 
           try {
-            // ... (addSource and addLayer logic)
-            // Ensure map.current exists
             if (map.current) {
               map.current.addSource(sourceId, {
                 type: "geojson",
@@ -502,8 +561,8 @@ export function MapView() {
       }
     }
 
-    // 必要に応じて表示範囲全体のズーム調整を行う（Fit Bounds）
-    // データが変更された場合のみ実行する
+    // 必要に応じて表示範囲全体のズーム調整を行う (Fit Bounds) ．
+    // データが変更された場合のみ実行する．
     if (
       isDataChanged &&
       shouldFitBounds &&
@@ -515,25 +574,48 @@ export function MapView() {
         bounds.extend(coord);
       });
 
-      // モバイル（992px 未満）かデスクトップかで右側の Padding を切り替える
-      const isMobile = window.matchMedia("(max-width: 991px)").matches;
-      const rightPadding = isMobile ? 50 : 350;
-
       // 地図サイズが変更されている可能性があるため強制的にリサイズを反映
       map.current.resize();
 
       map.current.fitBounds(bounds, {
-        padding: { top: 100, bottom: 200, left: 50, right: rightPadding },
+        padding: { top: 80, bottom: 150, left: 50, right: 50 },
         maxZoom: 16,
         duration: 1200,
       });
     }
 
-    // データ変更状態を更新
+    // 1 つだけのピンの場合は Tooltip を表示する（データ変更時）．
+    if (isDataChanged && speeches.length === 1) {
+      setTimeout(() => {
+        showPopup(speeches[0], false);
+      }, 100);
+    }
+
+    // フィルター結果が 0 件の場合は日本列島全体にズームアウトする．
+    if (
+      isDataChanged &&
+      speeches.length === 0 &&
+      filter.selectedNames.length > 0 &&
+      map.current
+    ) {
+      // 日本列島全体が見える範囲．
+      const japanBounds = new maplibregl.LngLatBounds(
+        [127.5, 26.0], // 南西
+        [146.0, 46.0], // 北東
+      );
+
+      map.current.fitBounds(japanBounds, {
+        padding: 50,
+        maxZoom: 5,
+        duration: 1200,
+      });
+    }
+
+    // データ変更状態を更新する．
     if (isDataChanged) {
       prevSpeechIdsRef.current = currentSpeechIds;
     }
-  }, [speeches, filter.searchQuery, createMarker]);
+  }, [speeches, filter.selectedNames, createMarker, showPopup, closePopup]);
 
   /**
    * ストア上のアクティブな演説 ID が変更された際，マーカーの強調および詳細ポップアップ表示を行う．

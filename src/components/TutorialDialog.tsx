@@ -111,7 +111,10 @@ export function TutorialDialog({ isOpen, onClose }: TutorialDialogProps) {
                   </Heading>
                 </Flex>
                 <Text fontSize="sm" lineHeight="1.8">
-                  画面下部のタイムスライダーを動かすことで，特定の時間帯に行われる演説だけを絞り込むことができます．再生ボタンを押すと，時間の経過とともに演説がどのように移動するかを確認できます．
+                  画面下部のタイムスライダーを動かして，08:00〜20:00
+                  の間の演説場所を確認できます．「現在」ボタンで今の時間の状態に戻せます．
+                  <br />
+                  「終日」ボタンを押すと時刻フィルタが無効になり，その一日の演説場所をすべて確認できます．再生ボタンを押すと，時間の経過とともに演説がどのように移動するかを確認できます．
                 </Text>
               </Box>
 
@@ -144,7 +147,7 @@ export function TutorialDialog({ isOpen, onClose }: TutorialDialogProps) {
                   </Heading>
                 </Flex>
                 <Text fontSize="sm" lineHeight="1.8">
-                  ヘッダーの検索窓から候補者名を検索したり，フィルターパネルから興味のある政党だけを表示したりすることができます．
+                  フィルターパネルから候補者名を検索したり，興味のある政党だけを表示したりすることができます．
                 </Text>
               </Box>
 

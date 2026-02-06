@@ -52,14 +52,15 @@ export interface Stats {
 }
 
 // フィルターの日付モードに関する型定義．
-export type DateMode = "today" | "upcoming" | "all";
+export type DateMode = "today" | "tomorrow" | "all";
 
 // フィルターのステータスに関する型定義．
 export interface FilterState {
   dateMode: DateMode;
   selectedPartyIds: number[];
   selectedCandidateIds: number[];
-  searchQuery: string;
+  selectedNames: string[]; // 候補者名・弁士名による複数選択フィルタ
+  allDay: boolean; // 終日モード（時刻指定を無効化）
 }
 
 // API レスポンスに関する型定義．
@@ -72,6 +73,7 @@ export interface ApiResponse<T> {
 export interface SearchSuggestion {
   name: string;
   type: "candidate" | "speaker";
+  count: number; // 演説データの件数
   party?: {
     id: number;
     name: string;
