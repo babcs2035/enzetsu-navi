@@ -1,6 +1,6 @@
 [tools]
-node = "25.4.0"
-pnpm = "10.28.2"
+node = "25.9.0"
+pnpm = "10.33.2"
 
 [tasks]
 # --- Setup ---
@@ -22,7 +22,7 @@ build = { description = "プロダクションビルド", depends = ["db:up"], r
 "db:reset" = { description = "DB リセット（全データ削除 & シード）", run = "pnpm prisma db push --force-reset && pnpm prisma db seed" }
 
 # --- Docker ---
-docker = { description = "フルスタック起動 (App + DB)", run = "docker compose up -d" }
+"docker:start" = { description = "フルスタック起動 (App + DB, build付き)", run = "docker compose up -d --build" }
 "docker:logs" = { description = "コンテナログ表示", run = "docker compose logs -f" }
 "docker:build" = { description = "Dockerイメージビルド", run = "docker compose build" }
 
